@@ -19,7 +19,7 @@ cubeEdges = ((0,1),(0,3),(0,4),(1,2),(1,7),(2,5),(2,3),(3,6),(4,6),(4,7),(5,6),(
 #Finally, connect the vertices via their number to also make a cube.
 #It helps to draw a diagram at this point. The page I'm following here has this diagram:
 # https://stackabuse.s3.amazonaws.com/media/advanced-opengl-in-python-pygame-and-pyopengl-2.png
-cubeQuads = ((3,2,1,0),(0,1,7,4),(3,2,5,6),(3,0,4,6),(2,1,7,5),(4,7,5,6))
+cubeQuads = ((0,3,2,1),(2,1,7,5),(0,1,7,4),(2,3,6,5),(3,0,4,6),(4,6,5,7))
 colours = ((0,0,1),(0,1,0),(1,0,0),(0,1,1),(1,0,1),(1,1,0),(0.5,0.5,0.5),(1,1,1))
 #pygame
 # draw wire cube
@@ -88,6 +88,16 @@ def main():
         #glPopMatrix()
 
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+
+        glDepthMask(GL_TRUE)
+        glDepthFunc(GL_LESS)
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_CULL_FACE)
+        glCullFace(GL_BACK)
+        glFrontFace(GL_CCW)
+        glShadeModel(GL_SMOOTH)
+        glDepthRange(0.0,1.0)
+        
         solidCube()
         #wireCube()
         pg.display.flip() #update window with active buffer contents
