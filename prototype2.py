@@ -19,7 +19,7 @@ cubeEdges = ((0,1),(0,3),(0,4),(1,2),(1,7),(2,5),(2,3),(3,6),(4,6),(4,7),(5,6),(
 #Finally, connect the vertices via their number to also make a cube.
 #It helps to draw a diagram at this point. The page I'm following here has this diagram:
 # https://stackabuse.s3.amazonaws.com/media/advanced-opengl-in-python-pygame-and-pyopengl-2.png
-cubeQuads = ((0,3,2,1),(2,1,7,5),(0,1,7,4),(2,3,6,5),(3,0,4,6),(4,6,5,7))
+cubeQuads = ((0,3,2,1),(5,7,1,2),(0,1,7,4),(2,3,6,5),(3,0,4,6),(4,7,5,6))
 colours = ((0,0,1),(0,1,0),(1,0,0),(0,1,1),(1,0,1),(1,1,0),(0.5,0.5,0.5),(1,1,1))
 #pygame
 # draw wire cube
