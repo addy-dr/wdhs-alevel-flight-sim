@@ -1,6 +1,7 @@
 import pygame as pg
 from pygame.locals import *
 from random import *
+import cProfile
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -9,35 +10,49 @@ mapMatrix = []
 
 print("Packages successfully loaded.")
 
+colours = [0.2, 0.4, 0.6, 0.8]
 
-def terrain():
+
+def triangulate(p1,p2,p3):
     #remember: counter clockwise rotation
-    for x in range(10000):
-        try:
-            glBegin(GL_TRIANGLES)
-            glColor3f(randint(0,1), randint(0,1), 1)
-            glVertex3fv(mapMatrix[x+1])
-            glVertex3fv(mapMatrix[x])
-            glVertex3fv(mapMatrix[x+100])
-            glVertex3fv(mapMatrix[x+1])
-            glEnd()
-        except IndexError: #at the edge
-            glEnd()
-            pass
+    for x in range(100):
+        glBegin(GL_TRIANGLES)
+        glColor3f(choice(colours), choice(colours), choice(colours))
+        glVertex3fv(p1)
+        glVertex3fv(p2)
+        glVertex3fv(p3)
+        glVertex3fv(p1)
+        glEnd()
+
+def genTerrain(mapMatrix):
+    try:
+        for i in range(len(mapMatrix)):
+            triangulate(mapMatrix[i+1],mapMatrix[i],mapMatrix[i+20])
+            triangulate(mapMatrix[i+1],mapMatrix[i+20],mapMatrix[i+21])
+    except IndexError: #invalid triangle, avoid crashing
+        pass
+
 
 def main():
     pg.init()
+    pg.font.init()
 
-    display = (1680, 1050)
+    my_font = pg.font.Font('freesansbold.ttf', 32)
+    text_surface = my_font.render('TEST', False, (255, 255, 255))
+
+    display = (1280, 720)
+
     pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
-    gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
+    gluPerspective(60, (display[0]/display[1]), 0.1, 50.0) #fov, aspect, zNear, zFar
     glTranslatef(0.0, 0.0, -5)
 
+    #screen.blit(text_surface, (0,0))
+
     #now, generatoe the map
-    for xcord in range(-50,50):
-        for zcord in range(-50,50):
-            mapMatrix.append((xcord,-0.5,zcord))
+    for zcord in range(-10,10):
+        for xcord in range(-10,10):
+            mapMatrix.append((xcord/2,uniform(-1,-0.5),zcord/2)) #enables steps of 0.1m
 
     while True: #allows us to actually leave the program
         for event in pg.event.get():
@@ -58,9 +73,10 @@ def main():
         glShadeModel(GL_SMOOTH)
         glDepthRange(0.0,1.0)
 
-        terrain()
+        genTerrain(mapMatrix)
+
         pg.display.flip() #update window with active buffer contents
-        pg.time.wait(10)
+        pg.time.wait(10) #wait a bit, avoids speed of simulation from being speed of execution of code
 
 if __name__ == "__main__":
     main()
