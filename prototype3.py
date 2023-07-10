@@ -33,8 +33,12 @@ def triangulate(p1,p2,p3):
 def genTerrain(mapMatrix):
     try:
         for i in range(len(mapMatrix)):
-            triangulate(mapMatrix[i+1],mapMatrix[i],mapMatrix[i+20])
-            triangulate(mapMatrix[i+1],mapMatrix[i+20],mapMatrix[i+21])
+            #This stops vertices at the edge from rendering triangles - this prebiously led to triangles being rendered across the entire map
+            if i%20 == 19:
+                pass
+            else:
+                triangulate(mapMatrix[i+1],mapMatrix[i],mapMatrix[i+20])
+                triangulate(mapMatrix[i+1],mapMatrix[i+20],mapMatrix[i+21])
     except IndexError: #invalid triangle, avoid crashing
         pass
 
