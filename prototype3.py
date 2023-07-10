@@ -1,17 +1,23 @@
 import pygame as pg
 from pygame.locals import *
 from random import *
-import cProfile
+import numpy as np
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
-mapMatrix = []
-
 print("Packages successfully loaded.")
+#########
 
 colours = [0.2, 0.4, 0.6, 0.8]
 
+def mapGen():
+    #Create our matrix
+    tempList = []
+    for zcord in range(-10,10):
+        for xcord in range(-10,10):
+            tempList.append((xcord/2,uniform(-1,-0.5),zcord/2)) #enables steps of 0.1m
+    return np.array(tempList)
 
 def triangulate(p1,p2,p3):
     #remember: counter clockwise rotation
@@ -47,12 +53,9 @@ def main():
     gluPerspective(60, (display[0]/display[1]), 0.1, 50.0) #fov, aspect, zNear, zFar
     glTranslatef(0.0, 0.0, -5)
 
-    #screen.blit(text_surface, (0,0))
+    mapMatrix = mapGen()
 
-    #now, generatoe the map
-    for zcord in range(-10,10):
-        for xcord in range(-10,10):
-            mapMatrix.append((xcord/2,uniform(-1,-0.5),zcord/2)) #enables steps of 0.1m
+    #screen.blit(text_surface, (0,0))
 
     while True: #allows us to actually leave the program
         for event in pg.event.get():
