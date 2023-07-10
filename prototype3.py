@@ -7,11 +7,14 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
+from numba import njit
+
 print("Packages successfully loaded.")
 #########
 
 colours = [0.2, 0.4, 0.6, 0.8]
 
+@njit
 def mapGen():
     #Create our matrix
     tempList = []
@@ -22,14 +25,13 @@ def mapGen():
 
 def triangulate(p1,p2,p3):
     #remember: counter clockwise rotation
-    for x in range(100):
-        glBegin(GL_TRIANGLES)
-        glColor3f(choice(colours), choice(colours), choice(colours))
-        glVertex3fv(p1)
-        glVertex3fv(p2)
-        glVertex3fv(p3)
-        glVertex3fv(p1)
-        glEnd()
+    glBegin(GL_TRIANGLES)
+    glColor3f(uniform(0.1,1), uniform(0.1,1), uniform(0.1,1))
+    glVertex3fv(p1)
+    glVertex3fv(p2)
+    glVertex3fv(p3)
+    glVertex3fv(p1)
+    glEnd()
 
 def genTerrain(mapMatrix):
     try:
