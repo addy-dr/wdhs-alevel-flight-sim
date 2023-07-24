@@ -12,8 +12,8 @@ from numba import njit
 print("Packages successfully loaded.")
 #########
 
-zlength = 20
-xlength = 20
+zlength = 50
+xlength = 50
 
 def mapGen():
     #Create our matrix for both the 20x20 surface and the colours
@@ -21,7 +21,7 @@ def mapGen():
     coloursList = []
     for zcord in range(-zlength//2,zlength//2):
         for xcord in range(-xlength//2,xlength//2):
-            vertList.append((xcord/2,uniform(-1,-0.5),zcord/2)) #enables steps of 0.1m
+            vertList.append((xcord/5,uniform(-1,-0.5),zcord/5)) #enables steps of 0.1m
             coloursList.append(((uniform(0.1,1)),(uniform(0.1,1)),(uniform(0.1,1)))) #define random RGB values for all corresponding vertices
             coloursList.append(((uniform(0.1,1)),(uniform(0.1,1)),(uniform(0.1,1)))) #every vertice has 2 triangles associated with it
     return np.array(vertList), np.array(coloursList)
