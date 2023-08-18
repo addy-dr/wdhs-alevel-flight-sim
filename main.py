@@ -136,7 +136,7 @@ def main():
         glShadeModel(GL_SMOOTH)
         glDepthRange(0.0,1.0)
 
-        genTerrain(mapMatrix, coloursList, offsetx, offsetz, XLENGTH, RENDER_DISTANCEQ)
+        genTerrain(mapMatrix, coloursList, offsetx, offsetz, XLENGTH, RENDER_DISTANCE)
         timeTaken=1/((pg.time.get_ticks()-timeTaken)/1000)
         text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
 
