@@ -7,7 +7,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
-from numba import njit
+from numba import njit, jit
 
 print("Packages successfully loaded.")
 #########
@@ -29,18 +29,21 @@ def mapGen():
             coloursList.append(((uniform(0.1,1)),(uniform(0.1,1)),(uniform(0.1,1)))) #every vertice has 2 triangles associated with it
     return np.array(vertList), np.array(coloursList)
 
-def triangulate(p1,p2,p3,colour):
+def triangulate(verticelist):
     #remember: counter clockwise rotation
-    glBegin(GL_TRIANGLES)
-    glColor3fv(colour)
-    glVertex3fv(p1)
-    glVertex3fv(p2)
-    glVertex3fv(p3)
-    glVertex3fv(p1)
-    glEnd()
+    for coordtuple in verticelist:
+        glBegin(GL_TRIANGLES)
+        glColor3fv(coordtuple[3])
+        glVertex3fv(coordtuple[0])
+        glVertex3fv(coordtuple[1])
+        glVertex3fv(coordtuple[2])
+        glVertex3fv(coordtuple[0])
+        glEnd()
 
 #we need to import all of these variables because numba won't know about them
-def genTerrain(mapMatrix, coloursList, offsetx, offsetz, XLENGTH, RENDER_DISTANCE):
+@njit
+def genTerrain(mapMatrix, coloursList, offsetx, offsetz):
+    verticelist = []
     try:
         for i in range(len(mapMatrix)):
             #This stops vertices at the edge from rendering triangles - this previously led to triangles being rendered across the entire map
@@ -51,10 +54,11 @@ def genTerrain(mapMatrix, coloursList, offsetx, offsetz, XLENGTH, RENDER_DISTANC
                 pass
             else:
                 #the two triangles adjacent to any vertex
-                triangulate(mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[2*i])
-                triangulate(mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[(2*i)-1])
-    except IndexError: #invalid triangle, avoid crashing
+                verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[2*i]))
+                verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[(2*i)-1]))
+    except Exception: #invalid triangle, avoid crashing
         pass
+    return verticelist
 
 #Define a text rendering framework:
 def text(x, y, color, text):
@@ -136,7 +140,7 @@ def main():
         glShadeModel(GL_SMOOTH)
         glDepthRange(0.0,1.0)
 
-        genTerrain(mapMatrix, coloursList, offsetx, offsetz, XLENGTH, RENDER_DISTANCE)
+        triangulate(genTerrain(mapMatrix, coloursList, offsetx, offsetz))
         timeTaken=1/((pg.time.get_ticks()-timeTaken)/1000)
         text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
 
