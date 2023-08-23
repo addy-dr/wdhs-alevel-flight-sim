@@ -13,35 +13,9 @@ from numba import njit, jit
 print("Packages successfully loaded.")
 #########
 
-#Principles of rendering:
-#Every object in OpenGL is a collection of points; lines that connect pairs of points; triangles composed of three points; quads composed of four points etc etc
-cubeVertices = ((1,1,1),(1,1,-1),(1,-1,-1),(1,-1,1),(-1,1,1),(-1,-1,-1),(-1,-1,1),(-1,1,-1)) #Points of a 2x2x2 cube
-#every edge is given a number, from 0 through to 7, based on its position in our array. To join them:
-cubeEdges = ((0,1),(0,3),(0,4),(1,2),(1,7),(2,5),(2,3),(3,6),(4,6),(4,7),(5,6),(5,7))
-#Finally, connect the vertices via their number to also make a cube.
-#It helps to draw a diagram at this point. The page I'm following here has this diagram:
-# https://stackabuse.s3.amazonaws.com/media/advanced-opengl-in-python-pygame-and-pyopengl-2.png
-cubeQuads = ((0,3,6,4),(2,5,6,3),(1,2,5,7),(1,0,4,7),(7,4,6,5),(2,3,0,1))
-
-# draw wire cube
-def wireCube():
-    glBegin(GL_LINES)  # begin drawing. GL_LINES tells us we'll be drawing lines
-    for cubeEdge in cubeEdges:
-        for cubeVertex in cubeEdge:
-            glVertex3fv(cubeVertices[cubeVertex]) 
-            """
-            What does this command mean?
-            glVertex: defines a vertex
-            glVertex3: 3-coordinate vertex
-            glVertex3f: of type GLfloat
-            glVertex3fv: put inside a vector (tuple) as opposed to glVertex3fl which uses a list of arguments instead
-            So, we are drawing out all our vertices one by one.
-            """
-    glEnd() #stop drawing
-
 #map size
-ZLENGTH = 300
-XLENGTH = 300
+ZLENGTH = 100
+XLENGTH = 100
 RENDER_DISTANCE = 4
 
 @njit #Normalises 3d vectors
@@ -56,17 +30,8 @@ def normalise(a,b,c,*d):
 #doesnt work with njit unfortunately
 def operateTuple(a,b,operand):
     result = ()
-    try:
-        if operand=='-':
-            for i in range(len(a)):
-                result += (a[i]-b[i],)
-        elif operand=='+':
-            for i in range(len(a)):
-                result += (a[i]+b[i],)
-        else:
-            result = a
-    except Exception:
-        raise Exception("Tuples in function \"subTuple\" of different lengths")
+    for i in range(len(a)):
+        result += (a[i]+b[i],)
     return result
 
 @njit
@@ -74,7 +39,7 @@ def mapGen():
     #Create our matrix for both the 20x20 surface and the colours
     vertList = []
     coloursList = []
-    for zcord in range(-ZLENGTH//2,ZLENGTH//2):
+    for zcord in range(ZLENGTH):
         for xcord in range(-XLENGTH//2,XLENGTH//2):
             vertList.append((xcord/6,uniform(-1,-0.5),zcord/6)) #enables steps of 0.1m
             coloursList.append(((uniform(0.1,1)),(uniform(0.1,1)),(uniform(0.1,1)))) #define random RGB values for all corresponding vertices
@@ -94,16 +59,21 @@ def triangulate(verticelist):
 
 #we need to import all of these variables because numba won't know about them
 @njit
-def genTerrain(mapMatrix, coloursList, offsetx, offsetz):
+def genTerrain(mapMatrix, coloursList, camPosition):
     verticelist = []
+    length = len(mapMatrix)
     try:
-        for i in range(len(mapMatrix)):
+        for i in range(length):
             #This stops vertices at the edge from rendering triangles - this previously led to triangles being rendered across the entire map
             if i%XLENGTH == XLENGTH-1:
                 pass
-            #only draw less than the render distance
-            elif ((mapMatrix[i][0]+offsetx)**2 + (mapMatrix[i][2]+offsetz)**2)**0.5 > RENDER_DISTANCE:
+            elif i+XLENGTH+1 > length: #ditto but for the other edge
                 pass
+            elif ((camPosition[0]-mapMatrix[i][0])**2 + (camPosition[2]-mapMatrix[i][2])**2)**(1/2) > RENDER_DISTANCE:
+                pass
+            #only draw less than the render distance
+            #elif ((mapMatrix[i][0]+offsetx)**2 + (mapMatrix[i][2]+offsetz)**2)**0.5 > RENDER_DISTANCE:
+                #pass
             else:
                 #the two triangles adjacent to any vertex
                 verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[2*i]))
@@ -123,15 +93,15 @@ def main():
     pg.font.init()
     glutInit()
     glutInitDisplayMode(GLUT_RGBA)
-
+    #pg.mouse.set_visible(False)
     my_font = pg.font.Font('freesansbold.ttf', 32)
 
-    display = (1280, 720)
+    display = (1920, 1080)
     offsetx = 0 #pos of camera from origin
     offsetz = 0
     speed=0.1
 
-    pitch = -90
+    pitch = 0
     yaw = 0
     roll = 0
 
@@ -139,15 +109,21 @@ def main():
     camPosition = (0,0,0)
     up = (0,1,0)
     camUp = (0,1,0)
-    camFront = (0,0,-4)
+    camFront = (0,0,0)
     direction = [0,0,0]
-
 
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
+    glMatrixMode(GL_PROJECTION)
     gluPerspective(60, (display[0]/display[1]), 0.1, 50.0) #fov, aspect, zNear, zFar
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+    print("Display initialised")
 
     mapMatrix, coloursList = mapGen()
+    print("Map Generated")
+    triangulate(genTerrain(mapMatrix, coloursList, camPosition)) #this first render is for debugging purposes
+    print("Map Rendered")
 
     #Run program:
 
@@ -167,44 +143,10 @@ def main():
 
         #clear buffer
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-
-        if keys[K_w]:
-            glTranslatef(0, 0, speed)
-            offsetz += speed
-            #camPosition += speed * camFront
-        if keys[K_s]:
-            glTranslatef(0, 0, -speed)
-            offsetz -= speed
-            #camPosition -= speed * camFront
-        if keys[K_a]:
-            glTranslatef(0.1, 0, 0)
-            offsetx+=0.1
-        if keys[K_d]:
-            glTranslatef(-0.1, 0, -0)
-            offsetx-=0.1
-
-        #camera direction
-        mouse = pg.mouse.get_rel()
-        yaw += mouse[0]
-        pitch += mouse[1]
-        if pitch > 89:
-            pitch = 89
-        if pitch < -89:
-            pitch = -89
-
-        #From drawing trigonemtric diagrams:
-        direction[0] = math.cos(math.radians(yaw)) * math.cos(math.radians(pitch))
-        direction[1] = math.sin(math.radians(pitch))
-        direction[2] = math.sin(math.radians(yaw)) * math.cos(math.radians(pitch))
-        camFront = normalise(*tuple(direction)) #get the front normalised vector
-        camRight = np.cross(up, camFront)
-        camUp = np.cross(camFront, camRight)
-
-        #use stars to unpack
-        print(operateTuple(camPosition,camFront,'+'))
-        gluLookAt(*camPosition, *(operateTuple(camPosition,(0,0,1),'+')), *camUp)
-        print(yaw,pitch,roll)
         
+        #generate terrain
+        triangulate(genTerrain(mapMatrix, coloursList, camPosition))
+
         #culling
         glDepthMask(GL_TRUE)
         glDepthFunc(GL_LESS)
@@ -215,10 +157,52 @@ def main():
         glShadeModel(GL_SMOOTH)
         glDepthRange(0.0,1.0)
 
-        #generate terrain
-        wireCube()
-        triangulate(genTerrain(mapMatrix, coloursList, offsetx, offsetz))
-        timeTaken=1/((pg.time.get_ticks()-timeTaken)/1000)
+        if keys[K_w]:
+            deltaPos = ()
+            for i in range(len(camFront)):
+                deltaPos += ((camPosition[i]+camFront[i]*speed),)
+            camPosition = deltaPos
+        if keys[K_s]:
+            deltaPos = ()
+            for i in range(len(camFront)):
+                deltaPos += ((camPosition[i]-camFront[i]*speed),)
+            camPosition = deltaPos
+        if keys[K_a]:
+            deltaPos = ()
+            for i in range(len(camFront)):
+                deltaPos += ((camPosition[i]+camRight[i]*speed),)
+            camPosition = deltaPos
+        if keys[K_d]:
+            deltaPos = ()
+            for i in range(len(camFront)):
+                deltaPos += ((camPosition[i]-camRight[i]*speed),)
+            camPosition = deltaPos
+
+        #camera direction
+        mouse = pg.mouse.get_rel()
+        yaw += mouse[0]/4
+        pitch -= mouse[1]/4
+        if pitch > 89:
+            pitch = 89
+        if pitch < -89:
+            pitch = -89
+
+        #From drawing trigonemtric diagrams:
+        direction[0] = math.cos(math.radians(yaw)) * math.cos(math.radians(pitch))
+        direction[1] = math.sin(math.radians(pitch))
+        direction[2] = math.sin(math.radians(yaw)) * math.cos(math.radians(pitch))
+        camFront = normalise(*tuple(direction)) #get the front normalised vector
+        camRight = normalise(*np.cross(up, camFront))
+        camUp = np.cross(camFront, camRight)
+
+        #use stars to unpack
+        glLoadIdentity() #as per https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
+        gluLookAt(*camPosition, *operateTuple(camPosition, camFront, '+'), *camUp)
+
+        try:
+            timeTaken=1/((pg.time.get_ticks()-timeTaken)/1000)
+        except Exception: #divide by zero sometimes happens when a frame is rendered instantly
+            pass
         text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
 
         pg.display.flip() #update window with active buffer contents
