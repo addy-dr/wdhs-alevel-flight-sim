@@ -2,5 +2,5 @@
 Organisation:
 
 - Prototypes - The prototypes for the project
-- NEA doc - the writeup
+- Adrian Draber Non-Exam Assessment - the writeup
 - main.py - the current NEA file
