@@ -1,4 +1,6 @@
 # wdhs-alevel-flight-sim
-wdhs-alevel-flight-sim
+Organisation:
 
-test
+- Prototypes - The prototypes for the project
+- NEA doc - the writeup
+- main.py - the current NEA file
