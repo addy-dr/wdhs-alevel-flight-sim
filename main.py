@@ -1,8 +1,10 @@
-import pygame as pg
-from pygame.locals import *
+from PIL import Image
 from random import *
 import numpy as np
 import math
+
+import pygame as pg
+from pygame.locals import *
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -10,13 +12,17 @@ from OpenGL.GLUT import *
 
 from numba import njit, jit
 
+
 print("Packages successfully loaded.")
 #########
 
+#import heightmap
+heightmap = np.array(Image.open('heightmap.bmp'))
+colourmap = np.array(Image.open('colourmap.bmp'))
 #map size
-ZLENGTH = 100
-XLENGTH = 100
-RENDER_DISTANCE = 4
+ZLENGTH = len(heightmap)
+XLENGTH = len(heightmap[0])
+RENDER_DISTANCE = 10
 
 @njit #Normalises 3d vectors
 def normalise(a,b,c,*d):
@@ -34,16 +40,16 @@ def operateTuple(a,b,operand):
         result += (a[i]+b[i],)
     return result
 
-@njit
-def mapGen():
+def mapGen(heightmap, colourmap):
     #Create our matrix for both the 20x20 surface and the colours
     vertList = []
     coloursList = []
     for zcord in range(ZLENGTH):
-        for xcord in range(-XLENGTH//2,XLENGTH//2):
-            vertList.append((xcord/6,uniform(-1,-0.5),zcord/6)) #enables steps of 0.1m
-            coloursList.append(((uniform(0.1,1)),(uniform(0.1,1)),(uniform(0.1,1)))) #define random RGB values for all corresponding vertices
-            coloursList.append(((uniform(0.1,1)),(uniform(0.1,1)),(uniform(0.1,1)))) #every vertice has 2 triangles associated with it
+        for xcord in range(XLENGTH):
+            vertList.append((xcord/6,heightmap[zcord][xcord]/150,zcord/6))
+            pixelColour = (colourmap[zcord][xcord][0]/255, colourmap[zcord][xcord][1]/255, colourmap[zcord][xcord][2]/255) #Convert from 0-255 RGB format to 0-1 RGB format
+            coloursList.append(pixelColour) #define RGB values for all corresponding vertices
+            coloursList.append(pixelColour) #every vertice has 2 triangles associated with it
     return np.array(vertList), np.array(coloursList)
 
 def triangulate(verticelist):
@@ -59,7 +65,7 @@ def triangulate(verticelist):
 
 #we need to import all of these variables because numba won't know about them
 @njit
-def genTerrain(mapMatrix, coloursList, camPosition):
+def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz):
     verticelist = []
     length = len(mapMatrix)
     try:
@@ -69,7 +75,7 @@ def genTerrain(mapMatrix, coloursList, camPosition):
                 pass
             elif i+XLENGTH+1 > length: #ditto but for the other edge
                 pass
-            elif ((camPosition[0]-mapMatrix[i][0])**2 + (camPosition[2]-mapMatrix[i][2])**2)**(1/2) > RENDER_DISTANCE:
+            elif ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) > RENDER_DISTANCE:
                 pass
             #only draw less than the render distance
             #elif ((mapMatrix[i][0]+offsetx)**2 + (mapMatrix[i][2]+offsetz)**2)**0.5 > RENDER_DISTANCE:
@@ -99,7 +105,7 @@ def main():
     display = (1920, 1080)
     offsetx = 0 #pos of camera from origin
     offsetz = 0
-    speed=0.1
+    speed = 0.1
 
     pitch = 0
     yaw = 0
@@ -114,16 +120,17 @@ def main():
 
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
+
     glMatrixMode(GL_PROJECTION)
     gluPerspective(60, (display[0]/display[1]), 0.1, 50.0) #fov, aspect, zNear, zFar
     glMatrixMode(GL_MODELVIEW)
     glPushMatrix()
-    print("Display initialised")
+    print("Display initialised")    #test
 
-    mapMatrix, coloursList = mapGen()
-    print("Map Generated")
-    triangulate(genTerrain(mapMatrix, coloursList, camPosition)) #this first render is for debugging purposes
-    print("Map Rendered")
+    mapMatrix, coloursList = mapGen(heightmap, colourmap)
+    print("Map Generated")    #test
+    triangulate(genTerrain(mapMatrix, coloursList, camPosition[0], camPosition[2])) #this first render is for debugging purposes
+    print("Map Rendered")    #test
 
     #Run program:
 
@@ -145,7 +152,7 @@ def main():
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
         
         #generate terrain
-        triangulate(genTerrain(mapMatrix, coloursList, camPosition))
+        triangulate(genTerrain(mapMatrix, coloursList, camPosition[0], camPosition[2]))
 
         #culling
         glDepthMask(GL_TRUE)
