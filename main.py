@@ -6,6 +6,8 @@ import math
 import pygame as pg
 from pygame.locals import *
 
+import threading
+
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -23,6 +25,7 @@ colourmap = np.array(Image.open('colourmap.bmp'))
 ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
 RENDER_DISTANCE = 10
+
 
 @njit #Normalises 3d vectors
 def normalise(a,b,c,*d):
@@ -52,16 +55,15 @@ def mapGen(heightmap, colourmap):
             coloursList.append(pixelColour) #every vertice has 2 triangles associated with it
     return np.array(vertList), np.array(coloursList)
 
-def triangulate(verticelist):
-    #remember: counter clockwise rotation
-    for coordtuple in verticelist:
-        glBegin(GL_TRIANGLES)
-        glColor3fv(coordtuple[3])
-        glVertex3fv(coordtuple[0])
-        glVertex3fv(coordtuple[1])
-        glVertex3fv(coordtuple[2])
-        glVertex3fv(coordtuple[0])
-        glEnd()
+#renders a triangle based on the coords inputted
+def renderTriangle(t1, t2, t3, c):  #triangle 1, triangle 2, triangle 3, colour
+    glBegin(GL_TRIANGLES)
+    glColor3fv(c)
+    glVertex3fv(t1)
+    glVertex3fv(t2)
+    glVertex3fv(t3)
+    glVertex3fv(c)
+    glEnd()
 
 #we need to import all of these variables because numba won't know about them
 @njit
@@ -88,6 +90,57 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz):
         pass
     return verticelist
 
+def cameraSystem(camPosition, up, speed, yaw, pitch, roll):
+    #returns a camera position vector. Otherwise, handles the lookat system and camera movement
+
+    direction = [0,0,0]
+    keys=pg.key.get_pressed()
+
+    #camera direction
+    mouse = pg.mouse.get_rel()
+    yaw += mouse[0]/4
+    pitch -= mouse[1]/4
+    if pitch > 89:
+        pitch = 89
+    if pitch < -89:
+        pitch = -89
+
+    #From drawing trigonemtric diagrams:
+    direction[0] = math.cos(math.radians(yaw)) * math.cos(math.radians(pitch))
+    direction[1] = math.sin(math.radians(pitch))
+    direction[2] = math.sin(math.radians(yaw)) * math.cos(math.radians(pitch))
+    camFront = normalise(*tuple(direction)) #get the front normalised vector
+    camRight = normalise(*np.cross(up, camFront))
+    camUp = np.cross(camFront, camRight)
+
+    # Handle movement input
+    if keys[K_w]:
+        deltaPos = ()
+        for i in range(len(camFront)):
+            deltaPos += ((camPosition[i]+camFront[i]*speed),)
+        camPosition = deltaPos
+    if keys[K_s]:
+        deltaPos = ()
+        for i in range(len(camFront)):
+            deltaPos += ((camPosition[i]-camFront[i]*speed),)
+        camPosition = deltaPos
+    if keys[K_a]:
+        deltaPos = ()
+        for i in range(len(camFront)):
+            deltaPos += ((camPosition[i]+camRight[i]*speed),)
+        camPosition = deltaPos
+    if keys[K_d]:
+        deltaPos = ()
+        for i in range(len(camFront)):
+            deltaPos += ((camPosition[i]-camRight[i]*speed),)
+        camPosition = deltaPos
+
+    #use stars to unpack
+    glLoadIdentity() #as per https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
+    gluLookAt(*camPosition, *operateTuple(camPosition, camFront, '+'), *camUp)
+
+    return camPosition, [yaw, pitch, roll]
+
 #Define a text rendering framework:
 def text(x, y, color, text):
     glColor3fv(color)
@@ -107,19 +160,12 @@ def main():
     offsetz = 0
     speed = 0.1
 
-    pitch = 0
-    yaw = 0
-    roll = 0
-
     #setup camera
+    eulerAngles = [0,0,0]
     camPosition = (0,0,0)
     up = (0,1,0)
-    camUp = (0,1,0)
-    camFront = (0,0,0)
-    direction = [0,0,0]
 
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
-
 
     glMatrixMode(GL_PROJECTION)
     gluPerspective(60, (display[0]/display[1]), 0.1, 50.0) #fov, aspect, zNear, zFar
@@ -129,11 +175,21 @@ def main():
 
     mapMatrix, coloursList = mapGen(heightmap, colourmap)
     print("Map Generated")    #test
-    triangulate(genTerrain(mapMatrix, coloursList, camPosition[0], camPosition[2])) #this first render is for debugging purposes
+    genTerrain(mapMatrix, coloursList, camPosition[0], camPosition[2]) #this first render is for debugging purposes
     print("Map Rendered")    #test
 
-    #Run program:
+    #culling
+    glDepthMask(GL_TRUE)
+    glDepthFunc(GL_LESS)
+    glEnable(GL_DEPTH_TEST)
+    glEnable(GL_CULL_FACE)
+    glCullFace(GL_BACK)
+    glFrontFace(GL_CCW)
+    glShadeModel(GL_SMOOTH)
+    glDepthRange(0.0,1.0)
 
+    ### RUN PROGRAM ###
+    
     while True: #allows us to actually leave the program
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -146,65 +202,17 @@ def main():
                     mapMatrix, coloursList = mapGen()
                     pg.time.wait(1)
         timeTaken=pg.time.get_ticks()
-        keys=pg.key.get_pressed()
 
         #clear buffer
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
         
+        #Camera
+        camPosition, eulerAngles = cameraSystem(camPosition, up, speed, *eulerAngles)
+
         #generate terrain
-        triangulate(genTerrain(mapMatrix, coloursList, camPosition[0], camPosition[2]))
-
-        #culling
-        glDepthMask(GL_TRUE)
-        glDepthFunc(GL_LESS)
-        glEnable(GL_DEPTH_TEST)
-        glEnable(GL_CULL_FACE)
-        glCullFace(GL_BACK)
-        glFrontFace(GL_CCW)
-        glShadeModel(GL_SMOOTH)
-        glDepthRange(0.0,1.0)
-
-        if keys[K_w]:
-            deltaPos = ()
-            for i in range(len(camFront)):
-                deltaPos += ((camPosition[i]+camFront[i]*speed),)
-            camPosition = deltaPos
-        if keys[K_s]:
-            deltaPos = ()
-            for i in range(len(camFront)):
-                deltaPos += ((camPosition[i]-camFront[i]*speed),)
-            camPosition = deltaPos
-        if keys[K_a]:
-            deltaPos = ()
-            for i in range(len(camFront)):
-                deltaPos += ((camPosition[i]+camRight[i]*speed),)
-            camPosition = deltaPos
-        if keys[K_d]:
-            deltaPos = ()
-            for i in range(len(camFront)):
-                deltaPos += ((camPosition[i]-camRight[i]*speed),)
-            camPosition = deltaPos
-
-        #camera direction
-        mouse = pg.mouse.get_rel()
-        yaw += mouse[0]/4
-        pitch -= mouse[1]/4
-        if pitch > 89:
-            pitch = 89
-        if pitch < -89:
-            pitch = -89
-
-        #From drawing trigonemtric diagrams:
-        direction[0] = math.cos(math.radians(yaw)) * math.cos(math.radians(pitch))
-        direction[1] = math.sin(math.radians(pitch))
-        direction[2] = math.sin(math.radians(yaw)) * math.cos(math.radians(pitch))
-        camFront = normalise(*tuple(direction)) #get the front normalised vector
-        camRight = normalise(*np.cross(up, camFront))
-        camUp = np.cross(camFront, camRight)
-
-        #use stars to unpack
-        glLoadIdentity() #as per https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
-        gluLookAt(*camPosition, *operateTuple(camPosition, camFront, '+'), *camUp)
+        verticelist = genTerrain(mapMatrix, coloursList, camPosition[0], camPosition[2])
+        for coords in verticelist:
+            renderTriangle(*coords)
 
         try:
             timeTaken=1/((pg.time.get_ticks()-timeTaken)/1000)
