@@ -6,8 +6,6 @@ import math
 import pygame as pg
 from pygame.locals import *
 
-import threading
-
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -21,6 +19,7 @@ print("Packages successfully loaded.")
 #import heightmap
 heightmap = np.array(Image.open('heightmap.bmp'))
 colourmap = np.array(Image.open('colourmap.bmp'))
+watermask = np.array(Image.open('watermask.bmp'))
 #map size
 ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
@@ -43,20 +42,27 @@ def operateTuple(a,b,operand):
         result += (a[i]+b[i],)
     return result
 
-def mapGen(heightmap, colourmap):
-    #Create our matrix for both the 20x20 surface and the colours
+def mapGen(heightmap, colourmap, watermask):
+    #Create our matrix for both the surface and the colours
     vertList = []
-    coloursList = []
+    coloursList = [(0,0.3,0.8)] #space 0 reserved for ocean tile colour
     for zcord in range(ZLENGTH):
         for xcord in range(XLENGTH):
-            vertList.append((xcord/6,heightmap[zcord][xcord]/150,zcord/6))
-            pixelColour = (colourmap[zcord][xcord][0]/255, colourmap[zcord][xcord][1]/255, colourmap[zcord][xcord][2]/255) #Convert from 0-255 RGB format to 0-1 RGB format
-            coloursList.append(pixelColour) #define RGB values for all corresponding vertices
-            coloursList.append(pixelColour) #every vertice has 2 triangles associated with it
+            if watermask[zcord][xcord][0] != 0: # => water tile as defined in the mask
+                vertList.append((xcord/3,0.75,zcord/3)) #so render as an ocean tile
+                coloursList.append((0.56+uniform(-0.05,0.05),0.72+uniform(-0.05,0.05),0.48+uniform(-0.05,0.05))) #generic lowlying land colour. Already check in map generating function if a tile is at sea level, so this is simply the colour for terrain sloping into sea level.
+                coloursList.append((0.56+uniform(-0.05,0.05),0.72+uniform(-0.05,0.05),0.48+uniform(-0.05,0.05))) #We do this twice since each "pixel" corresponds to two colours.
+            else:
+                vertList.append((xcord/3,heightmap[zcord][xcord]/150,zcord/3))
+                pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05)) #Convert from 0-255 RGB format to 0-1 RGB format. Random number adds colour variation for aesthetic purposes
+                coloursList.append(pixelColour) #define RGB values for all corresponding vertices
+
+                pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05)) #We do this twice since each "pixel" corresponds to two colours.
+                coloursList.append(pixelColour)
     return np.array(vertList), np.array(coloursList)
 
 #renders a triangle based on the coords inputted
-def renderTriangle(t1, t2, t3, c):  #triangle 1, triangle 2, triangle 3, colour
+def renderTriangle(t1, t2, t3, c):  #triangle 1, triangle 2, triangle 3, ocean tile? (not relevant here), colour
     glBegin(GL_TRIANGLES)
     glColor3fv(c)
     glVertex3fv(t1)
@@ -84,8 +90,15 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz):
                 #pass
             else:
                 #the two triangles adjacent to any vertex
-                verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[2*i]))
-                verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[(2*i)-1]))
+                print()
+                if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.75: #This is only true if all three corners are at sea level
+                    verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[0]))
+                else:
+                    verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[2*i+1]))
+                if mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == mapMatrix[i+XLENGTH+1][1] == 0.75: #This is only true if all three corners are at sea level
+                    verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[0]))
+                else:
+                    verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[2*i+2]))
     except Exception: #invalid triangle, avoid crashing
         pass
     return verticelist
@@ -158,11 +171,11 @@ def main():
     display = (1920, 1080)
     offsetx = 0 #pos of camera from origin
     offsetz = 0
-    speed = 0.1
+    speed = 0.5
 
     #setup camera
     eulerAngles = [0,0,0]
-    camPosition = (0,0,0)
+    camPosition = (30,3,60)
     up = (0,1,0)
 
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
@@ -173,7 +186,7 @@ def main():
     glPushMatrix()
     print("Display initialised")    #test
 
-    mapMatrix, coloursList = mapGen(heightmap, colourmap)
+    mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
     print("Map Generated")    #test
     genTerrain(mapMatrix, coloursList, camPosition[0], camPosition[2]) #this first render is for debugging purposes
     print("Map Rendered")    #test
@@ -219,6 +232,7 @@ def main():
         except Exception: #divide by zero sometimes happens when a frame is rendered instantly
             pass
         text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
+        text(0, 800, (1, 0, 0), str(camPosition))
 
         pg.display.flip() #update window with active buffer contents
         pg.time.wait(10) #wait a bit, avoids speed of simulation from being speed of execution of code
