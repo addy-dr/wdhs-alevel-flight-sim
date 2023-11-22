@@ -2,10 +2,13 @@ from PIL import Image
 from random import *
 import numpy as np
 import math
+import json 
 
+#Pygame
 import pygame as pg
 from pygame.locals import *
 
+#OpenGL
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -16,14 +19,89 @@ from numba import njit, jit
 print("Packages successfully loaded.")
 #########
 
-#import heightmap
+#import data
 heightmap = np.array(Image.open('heightmap.bmp'))
 colourmap = np.array(Image.open('colourmap.bmp'))
 watermask = np.array(Image.open('watermask.bmp'))
+with open("NACA2412.json", "r+") as f:
+    naca2412_airfoil = json.load(f)[1]
 #map size
 ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
 RENDER_DISTANCE = 10
+
+class Camera:
+
+    up = (0,1,0) #global definition of up independent of the camera
+
+    def __init__(self, position, speed):
+        self.__eulerAngles = [0,0,0] #yaw, pitch, roll
+        self.__position = position #x, y, z
+        self.__velocity = (speed,speed,speed)
+        self.__acceleration = (0,0,0)
+        self.__front = (0,0,0)
+        self.__right = (0,0,0)
+        self.__up = (0,1,0)
+
+    def getPos(self):
+        return self.__position
+
+    def getXZ(self): #relevant as determining the position of the plane on a 2d coordinate map will only require XZ coordinates, Y is irrelevant
+        return [self.__position[0], self.__position[2]]
+
+    def getDir (self):
+        return self.__front
+
+    def update(self, keys, mouse):
+        #returns a camera position vector. Otherwise, handles the lookat system and camera movement
+
+        speed = ((self.__velocity[0]**2) * (self.__velocity[1]**2) * (self.__velocity[2]**2))**(0.5) #pythagorean theorem
+        direction = [0,0,0]
+
+        #camera direction
+        self.__eulerAngles[0] += mouse[0]/4 #yaw
+        self.__eulerAngles[1] -= mouse[1]/4 #pitch
+        if self.__eulerAngles[1] > 89: #keep pitch to 180 degree bounds
+            self.__eulerAngles[1] = 89
+        if self.__eulerAngles[1] < -89:
+            self.__eulerAngles[1] = -89
+
+        #From drawing trigonemtric diagrams:
+        direction[0] = math.cos(math.radians(self.__eulerAngles[0])) * math.cos(math.radians(self.__eulerAngles[1]))
+        direction[1] = math.sin(math.radians(self.__eulerAngles[1]))
+        direction[2] = math.sin(math.radians(self.__eulerAngles[0])) * math.cos(math.radians(self.__eulerAngles[1]))
+        self.__front = normalise(*tuple(direction)) #get the front normalised vector
+        self.__right = normalise(*np.cross(Camera.up, self.__front))
+        self.__up = np.cross(self.__front, self.__right)
+
+        # Handle movement input
+        if keys[K_w]:
+            newPos = ()
+            for i in range(len(self.__front)):
+                newPos += ((self.__position[i]+self.__front[i]*speed),)
+            self.__position = newPos
+        if keys[K_s]:
+            newPos = ()
+            for i in range(len(self.__front)):
+                newPos += ((self.__position[i]-self.__front[i]*speed),)
+            self.__position = newPos
+        if keys[K_a]:
+            newPos = ()
+            for i in range(len(self.__front)):
+                newPos += ((self.__position[i]+self.__right[i]*speed),)
+            self.__position = newPos
+        if keys[K_d]:
+            newPos = ()
+            for i in range(len(self.__front)):
+                newPos += ((self.__position[i]-self.__right[i]*speed),)
+            self.__position = newPos
+
+        #use stars to unpack
+        glLoadIdentity() #as per https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
+        gluLookAt(*self.__position, *operateTuple(self.__position, self.__front, '+'), *self.__up)
+
+    def resolveForces(self, Thrust, deltaTime, Area = 16.2, mass = 1100):
+        pass
 
 
 @njit #Normalises 3d vectors
@@ -85,9 +163,6 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz):
                 pass
             elif ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) > RENDER_DISTANCE:
                 pass
-            #only draw less than the render distance
-            #elif ((mapMatrix[i][0]+offsetx)**2 + (mapMatrix[i][2]+offsetz)**2)**0.5 > RENDER_DISTANCE:
-                #pass
             else:
                 #the two triangles adjacent to any vertex
                 print()
@@ -102,57 +177,6 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz):
     except Exception: #invalid triangle, avoid crashing
         pass
     return verticelist
-
-def cameraSystem(camPosition, up, speed, yaw, pitch, roll):
-    #returns a camera position vector. Otherwise, handles the lookat system and camera movement
-
-    direction = [0,0,0]
-    keys=pg.key.get_pressed()
-
-    #camera direction
-    mouse = pg.mouse.get_rel()
-    yaw += mouse[0]/4
-    pitch -= mouse[1]/4
-    if pitch > 89:
-        pitch = 89
-    if pitch < -89:
-        pitch = -89
-
-    #From drawing trigonemtric diagrams:
-    direction[0] = math.cos(math.radians(yaw)) * math.cos(math.radians(pitch))
-    direction[1] = math.sin(math.radians(pitch))
-    direction[2] = math.sin(math.radians(yaw)) * math.cos(math.radians(pitch))
-    camFront = normalise(*tuple(direction)) #get the front normalised vector
-    camRight = normalise(*np.cross(up, camFront))
-    camUp = np.cross(camFront, camRight)
-
-    # Handle movement input
-    if keys[K_w]:
-        deltaPos = ()
-        for i in range(len(camFront)):
-            deltaPos += ((camPosition[i]+camFront[i]*speed),)
-        camPosition = deltaPos
-    if keys[K_s]:
-        deltaPos = ()
-        for i in range(len(camFront)):
-            deltaPos += ((camPosition[i]-camFront[i]*speed),)
-        camPosition = deltaPos
-    if keys[K_a]:
-        deltaPos = ()
-        for i in range(len(camFront)):
-            deltaPos += ((camPosition[i]+camRight[i]*speed),)
-        camPosition = deltaPos
-    if keys[K_d]:
-        deltaPos = ()
-        for i in range(len(camFront)):
-            deltaPos += ((camPosition[i]-camRight[i]*speed),)
-        camPosition = deltaPos
-
-    #use stars to unpack
-    glLoadIdentity() #as per https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
-    gluLookAt(*camPosition, *operateTuple(camPosition, camFront, '+'), *camUp)
-
-    return camPosition, [yaw, pitch, roll]
 
 #Define a text rendering framework:
 def text(x, y, color, text):
@@ -169,14 +193,8 @@ def main():
     my_font = pg.font.Font('freesansbold.ttf', 32)
 
     display = (1920, 1080)
-    offsetx = 0 #pos of camera from origin
-    offsetz = 0
-    speed = 0.5
 
-    #setup camera
-    eulerAngles = [0,0,0]
-    camPosition = (30,3,60)
-    up = (0,1,0)
+    mainCam = Camera((30,3,60), 0.5) #position, speed (speed is a placeholder variable)
 
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
@@ -188,7 +206,7 @@ def main():
 
     mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
     print("Map Generated")    #test
-    genTerrain(mapMatrix, coloursList, camPosition[0], camPosition[2]) #this first render is for debugging purposes
+    genTerrain(mapMatrix, coloursList, *mainCam.getXZ()) #this first render is for debugging purposes
     print("Map Rendered")    #test
 
     #culling
@@ -219,11 +237,13 @@ def main():
         #clear buffer
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
         
-        #Camera
-        camPosition, eulerAngles = cameraSystem(camPosition, up, speed, *eulerAngles)
+        #update the camera with input from the user
+        mouse = pg.mouse.get_rel()
+        keys = pg.key.get_pressed()
+        mainCam.update(keys, mouse)
 
         #generate terrain
-        verticelist = genTerrain(mapMatrix, coloursList, camPosition[0], camPosition[2])
+        verticelist = genTerrain(mapMatrix, coloursList, *mainCam.getXZ())
         for coords in verticelist:
             renderTriangle(*coords)
 
@@ -232,7 +252,7 @@ def main():
         except Exception: #divide by zero sometimes happens when a frame is rendered instantly
             pass
         text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
-        text(0, 800, (1, 0, 0), str(camPosition))
+        text(0, 800, (1, 0, 0), str(mainCam.getPos()))
 
         pg.display.flip() #update window with active buffer contents
         pg.time.wait(10) #wait a bit, avoids speed of simulation from being speed of execution of code
