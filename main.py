@@ -102,6 +102,13 @@ class Camera:
     def resolveForces(self, Thrust, deltaTime, Area = 16.2, mass = 1100):
         pass
 
+#returns bearing in degrees. -180 to 180
+def findBearing(x, y):
+    if y<0:
+        return -(math.degrees(math.atan(y/x)) + 90)
+    else:
+        return (math.degrees(math.atan(x/y)))
+
 
 @njit #Normalises 3d vectors
 def normalise(a,b,c,*d):
