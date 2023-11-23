@@ -7,7 +7,7 @@ import json
 #Pygame
 import pygame as pg
 from pygame.locals import *
-#
+
 #OpenGL
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -64,6 +64,7 @@ class Camera:
             self.__eulerAngles[1] = 89
         if self.__eulerAngles[1] < -89:
             self.__eulerAngles[1] = -89
+        self.__eulerAngles[0] = self.__eulerAngles[0] % 360 #keep yaw within the bounds
 
         #From drawing trigonemtric diagrams:
         direction[0] = math.cos(math.radians(self.__eulerAngles[0])) * math.cos(math.radians(self.__eulerAngles[1]))
@@ -137,14 +138,14 @@ def mapGen(heightmap, colourmap, watermask):
                 coloursList.append(pixelColour)
     return np.array(vertList), np.array(coloursList)
 
-#renders a triangle based on the coords inputted
-def renderTriangle(t1, t2, t3, c):  #triangle 1, triangle 2, triangle 3, colour
+#renders a mesh of triangles based on the coords inputted
+def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex 3, colour
     glBegin(GL_TRIANGLES)
-    glColor3fv(c)
-    glVertex3fv(t1)
-    glVertex3fv(t2)
-    glVertex3fv(t3)
-    glVertex3fv(c)
+    for coord in vertices:
+        glColor3fv(coord[3])
+        glVertex3fv(coord[0])
+        glVertex3fv(coord[1])
+        glVertex3fv(coord[2])
     glEnd()
 
 #we need to import all of these variables because numba won't know about them
@@ -240,8 +241,7 @@ def main():
 
         #generate the visible terrain
         verticelist = genTerrain(mapMatrix, coloursList, *mainCam.getXZ())
-        for coords in verticelist:
-            renderTriangle(*coords)
+        renderTriangle(verticelist)
 
         try:
             timeTaken=1/((pg.time.get_ticks()-timeTaken)/1000)
@@ -252,7 +252,8 @@ def main():
         text(0, 800, (1, 0, 0), str(mainCam.getDir()))
 
         pg.display.flip() #update window with active buffer contents
-        pg.time.wait(10) #wait a bit, avoids speed of simulation from being speed of execution of code
+        while pg.time.get_ticks() % 17 != 0: #caps program at 60fps so that speed of execution is not speed of simulation
+            pass
 
 if __name__ == "__main__":
     main()
