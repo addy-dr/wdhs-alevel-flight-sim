@@ -102,13 +102,6 @@ class Camera:
     def resolveForces(self, Thrust, deltaTime, Area = 16.2, mass = 1100):
         pass
 
-#returns bearing in degrees. -180 to 180
-def findBearing(x, y):
-    if y<0:
-        return -(math.degrees(math.atan(y/x)) + 90)
-    else:
-        return (math.degrees(math.atan(x/y)))
-
 
 @njit #Normalises 3d vectors
 def normalise(a,b,c,*d):
@@ -157,27 +150,39 @@ def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex
 
 #we need to import all of these variables because numba won't know about them
 @njit
-def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz):
+def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw):
     verticelist = []
+    arctan = lambda x: 360/(2*3.1415) * (1.57 - 1/x + 1/(3*x**3) - 1/(5*x**5)) #since we can't import the maths module into an njit func, we are using this Laurent series expansion of arctan to get an accurate enough estimate of arctan in degrees
     length = len(mapMatrix)
     try:
         for i in range(length):
             if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) > RENDER_DISTANCE: #only renders triangles within the render distance
                 pass
-            elif i+XLENGTH+1 > length: #This stops vertices at the edge from rendering triangles - this previously led to triangles being rendered across the entire map
-                pass
-            elif i%XLENGTH == XLENGTH-1: #same as above but for other edge
-                pass
             else:
-                #the two triangles adjacent to any vertex
-                if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.75: #This is only true if all three corners are at sea level
-                    verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[0]))
+                if (mapMatrix[i][0]-camPositionx) < 0:
+                    bearing = 180 - abs((mapMatrix[i][2]-camPositionz)/(mapMatrix[i][0]-camPositionx))
                 else:
-                    verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[2*i+1]))
-                if mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == mapMatrix[i+XLENGTH+1][1] == 0.75: #This is only true if all three corners are at sea level
-                    verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[0]))
+                    bearing = abs((mapMatrix[i][2]-camPositionz)/(mapMatrix[i][0]-camPositionx))
+
+                if (mapMatrix[i][2]-camPositionz) < 0:
+                    bearing = 360-bearing
+
+                if bearing-yaw < 270 and bearing-yaw > 90:
+                    pass
+                elif i+XLENGTH+1 > length: #This stops vertices at the edge from rendering triangles - this previously led to triangles being rendered across the entire map
+                    pass
+                elif i%XLENGTH == XLENGTH-1: #same as above but for other edge
+                    pass
                 else:
-                    verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[2*i+2]))
+                    #the two triangles adjacent to any vertex
+                    if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.75: #This is only true if all three corners are at sea level
+                        verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[0]))
+                    else:
+                        verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[2*i+1]))
+                    if mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == mapMatrix[i+XLENGTH+1][1] == 0.75: #This is only true if all three corners are at sea level
+                        verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[0]))
+                    else:
+                        verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[2*i+2]))
     except Exception: #invalid triangle, avoid crashing
         pass
     return verticelist
@@ -210,7 +215,7 @@ def main():
     mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
     print("Map Generated")    #test
 
-    genTerrain(mapMatrix, coloursList, *mainCam.getXZ()) #this first render is for debugging purposes
+    genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0]) #this first render is for debugging purposes
     print("Map Rendered")    #test
 
     #culling settings
@@ -247,7 +252,7 @@ def main():
         mainCam.update(keys, mouse)
 
         #generate the visible terrain
-        verticelist = genTerrain(mapMatrix, coloursList, *mainCam.getXZ())
+        verticelist = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0])
         renderTriangle(verticelist)
 
         try:
