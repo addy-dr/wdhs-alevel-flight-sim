@@ -152,7 +152,8 @@ def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex
 @njit
 def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw):
     verticelist = []
-    arctan = lambda x: 360/(2*3.1415) * (1.57 - 1/x + 1/(3*x**3) - 1/(5*x**5)) #since we can't import the maths module into an njit func, we are using this Laurent series expansion of arctan to get an accurate enough estimate of arctan in degrees
+    #TODO: FIX THIS BY IMPLEMENTING A SERIES THAT WORKS FOR X>1
+    arctan = lambda x: (360/(2*3.1416)) * (x - (x**3)/3 + (x**5)/5 - (x**7)/7 + (x**9)/9 - (x**11)/11) #since we can't import the maths module into an njit func, we are using this Taylor series expansion of arctan to get an accurate enough estimate of arctan in degrees
     length = len(mapMatrix)
     try:
         for i in range(length):
@@ -160,21 +161,23 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw):
                 pass
             else:
                 if (mapMatrix[i][0]-camPositionx) < 0:
-                    bearing = 180 - abs((mapMatrix[i][2]-camPositionz)/(mapMatrix[i][0]-camPositionx))
+                    bearing = 180 - abs(arctan((mapMatrix[i][2]-camPositionz)/(mapMatrix[i][0]-camPositionx)))
                 else:
-                    bearing = abs((mapMatrix[i][2]-camPositionz)/(mapMatrix[i][0]-camPositionx))
+                    bearing = abs(arctan((mapMatrix[i][2]-camPositionz)/(mapMatrix[i][0]-camPositionx)))
 
                 if (mapMatrix[i][2]-camPositionz) < 0:
                     bearing = 360-bearing
 
-                if bearing-yaw < 270 and bearing-yaw > 90:
+                if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0:
                     pass
+
                 elif i+XLENGTH+1 > length: #This stops vertices at the edge from rendering triangles - this previously led to triangles being rendered across the entire map
                     pass
                 elif i%XLENGTH == XLENGTH-1: #same as above but for other edge
                     pass
                 else:
                     #the two triangles adjacent to any vertex
+                    print(bearing, mapMatrix[i][2], mapMatrix[i][0])
                     if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.75: #This is only true if all three corners are at sea level
                         verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[0]))
                     else:
