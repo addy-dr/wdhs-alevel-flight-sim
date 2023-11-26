@@ -152,8 +152,16 @@ def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex
 @njit
 def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw):
     verticelist = []
-    #TODO: FIX THIS BY IMPLEMENTING A SERIES THAT WORKS FOR X>1
-    arctan = lambda x: (360/(2*3.1416)) * (x - (x**3)/3 + (x**5)/5 - (x**7)/7 + (x**9)/9 - (x**11)/11) #since we can't import the maths module into an njit func, we are using this Taylor series expansion of arctan to get an accurate enough estimate of arctan in degrees
+    #We define an inner function so we can calculate arctan.This is since we can't import math or numpy into this njit func.
+    #To calculate arctan, we use taylor series. This only works for small input values (here <0.1), so we otherwise use a trig identity derived from the arctan addition formula (found on https://en.wikipedia.org/wiki/List_of_trigonometric_identities) which can be expressed as arctanx = 2 * arctan(x / (1 + sqrt(1 + x^2)))
+    #We use a loop to reduce x until it is smaller than 0.1, and then multiply by 2 by how many times we reduced it, essentially causing a cascading effect to get arctan.
+    def arctan(x):
+        i = 0
+        while abs(x) > 0.1:
+            x = x / (1 + (1 + x*x)**0.5)
+            i += 1
+        return (360/(2*3.1416)) * (x - (x**3)/3 + (x**5)/5 - (x**7)/7 + (x**9)/9 - (x**11)/11) * 2**i
+    
     length = len(mapMatrix)
     try:
         for i in range(length):
