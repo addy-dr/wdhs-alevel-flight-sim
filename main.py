@@ -119,6 +119,15 @@ def operateTuple(a,b,operand):
         result += (a[i]+b[i],)
     return result
 
+def checkforcollision(triangles, Camera):
+    for triangle in triangles:
+        p1 = triangle[0]
+        p2 = triangle[1]
+        p3 = triangle[2]
+        normal = np.cross(p2-p1, p3-p1)
+        if np.dot(normal, Camera.getPos()) <= np.dot(normal, p1):
+            print("collision detected at "+str(triangle)+" for "+str(Camera.getPos()))
+
 def mapGen(heightmap, colourmap, watermask):
     #Create our matrix for both the surface and the colours
     vertList = []
@@ -151,7 +160,7 @@ def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex
 #we need to import all of these variables because numba won't know about them
 @njit
 def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw):
-    verticelist = []
+    verticelist, collisionCheckList = [], []
     #We define an inner function so we can calculate arctan.This is since we can't import math or numpy into this njit func.
     #To calculate arctan, we use taylor series. This only works for small input values (here <0.1), so we otherwise use a trig identity derived from the arctan addition formula (found on https://en.wikipedia.org/wiki/List_of_trigonometric_identities) which can be expressed as arctanx = 2 * arctan(x / (1 + sqrt(1 + x^2)))
     #We use a loop to reduce x until it is smaller than 0.1, and then multiply by 2 by how many times we reduced it, essentially causing a cascading effect to get arctan.
@@ -164,11 +173,19 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw):
     
     length = len(mapMatrix)
     try:
-        for i in range(length):
+        for i in range(length):                   
             if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) > RENDER_DISTANCE: #only renders triangles within the render distance
                 pass
+            elif i+XLENGTH+1 > length: #This stops vertices at the edge from rendering triangles - this previously led to triangles being rendered across the entire map
+                pass
+            elif i%XLENGTH == XLENGTH-1: #same as above but for other edge
+                pass
             else:
-                if (mapMatrix[i][0]-camPositionx) < 0:
+                if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) < 0.5:
+                    collisionCheckList.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH]))
+                    collisionCheckList.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1]))
+
+                if (mapMatrix[i][0]-camPositionx) < 0: #Calculate the bearing of the vertice from the x axis
                     bearing = 180 - abs(arctan((mapMatrix[i][2]-camPositionz)/(mapMatrix[i][0]-camPositionx)))
                 else:
                     bearing = abs(arctan((mapMatrix[i][2]-camPositionz)/(mapMatrix[i][0]-camPositionx)))
@@ -176,16 +193,11 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw):
                 if (mapMatrix[i][2]-camPositionz) < 0:
                     bearing = 360-bearing
 
-                if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0:
+                if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0: #If the vertice is more than 100 ddegrees away from the yaw, do not render
                     pass
 
-                elif i+XLENGTH+1 > length: #This stops vertices at the edge from rendering triangles - this previously led to triangles being rendered across the entire map
-                    pass
-                elif i%XLENGTH == XLENGTH-1: #same as above but for other edge
-                    pass
                 else:
                     #the two triangles adjacent to any vertex
-                    print(bearing, mapMatrix[i][2], mapMatrix[i][0])
                     if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.75: #This is only true if all three corners are at sea level
                         verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[0]))
                     else:
@@ -196,7 +208,7 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw):
                         verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[2*i+2]))
     except Exception: #invalid triangle, avoid crashing
         pass
-    return verticelist
+    return verticelist, collisionCheckList
 
 #Define a text rendering framework:
 def text(x, y, color, text):
@@ -252,6 +264,11 @@ def main():
                 if event.key == pg.K_r:
                     mapMatrix, coloursList = mapGen()
                     pg.time.wait(1)
+
+            #dedicated crash button
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_c:
+                    raise Exception("developer forced crash")
         timeTaken=pg.time.get_ticks()
 
         #clear buffer
@@ -263,8 +280,9 @@ def main():
         mainCam.update(keys, mouse)
 
         #generate the visible terrain
-        verticelist = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0])
+        verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0])
         renderTriangle(verticelist)
+        checkforcollision(colCheck, mainCam)
 
         try:
             timeTaken=1/((pg.time.get_ticks()-timeTaken)/1000)
