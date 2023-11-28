@@ -193,7 +193,7 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
                 if (mapMatrix[i][2]-camPositionz) < 0:
                     bearing = 360-bearing
 
-                if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0 and pitch<-75: #If the vertice is more than 100 ddegrees away from the yaw, do not render
+                if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0 and pitch>-75: #If the vertice is more than 100 ddegrees away from the yaw, do not render
                     pass
 
                 else:
