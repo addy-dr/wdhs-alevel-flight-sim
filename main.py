@@ -126,7 +126,7 @@ def checkforcollision(triangles, Camera):
         p3 = triangle[2]
         normal = np.cross(p2-p1, p3-p1)
         if np.dot(normal, Camera.getPos()) <= np.dot(normal, p1):
-            print("collision detected at "+str(triangle)+" for "+str(Camera.getPos()))
+            text(800, 800, (1, 0, 0), "CRASHED!")
 
 def mapGen(heightmap, colourmap, watermask):
     #Create our matrix for both the surface and the colours
@@ -159,7 +159,7 @@ def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex
 
 #we need to import all of these variables because numba won't know about them
 @njit
-def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw):
+def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
     verticelist, collisionCheckList = [], []
     #We define an inner function so we can calculate arctan.This is since we can't import math or numpy into this njit func.
     #To calculate arctan, we use taylor series. This only works for small input values (here <0.1), so we otherwise use a trig identity derived from the arctan addition formula (found on https://en.wikipedia.org/wiki/List_of_trigonometric_identities) which can be expressed as arctanx = 2 * arctan(x / (1 + sqrt(1 + x^2)))
@@ -193,7 +193,7 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw):
                 if (mapMatrix[i][2]-camPositionz) < 0:
                     bearing = 360-bearing
 
-                if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0: #If the vertice is more than 100 ddegrees away from the yaw, do not render
+                if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0 and pitch<-75: #If the vertice is more than 100 ddegrees away from the yaw, do not render
                     pass
 
                 else:
@@ -238,7 +238,7 @@ def main():
     mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
     print("Map Generated")    #test
 
-    genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0]) #this first render is for debugging purposes
+    genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0], mainCam.getDir()[1]) #this first render is for debugging purposes
     print("Map Rendered")    #test
 
     #culling settings
@@ -280,7 +280,7 @@ def main():
         mainCam.update(keys, mouse)
 
         #generate the visible terrain
-        verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0])
+        verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0], mainCam.getDir()[1])
         renderTriangle(verticelist)
         checkforcollision(colCheck, mainCam)
 
