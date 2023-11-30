@@ -2,7 +2,7 @@ from PIL import Image
 from random import *
 import numpy as np
 import math
-import json 
+import json
 
 #Pygame
 import pygame as pg
@@ -13,7 +13,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
-from numba import njit, jit
+from numba import njit
 
 
 print("Packages successfully loaded.")
@@ -52,7 +52,7 @@ class Camera:
         return self.__eulerAngles
 
     def update(self, keys, mouse):
-        #returns a camera position vector. Otherwise, handles the lookat system and camera movement
+        #Handles the lookat system and camera movement
 
         speed = ((self.__velocity[0]**2) * (self.__velocity[1]**2) * (self.__velocity[2]**2))**(0.5) #pythagorean theorem
         direction = [0,0,0]
@@ -97,7 +97,7 @@ class Camera:
             self.__position = newPos
 
         glLoadIdentity() #as per https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
-        gluLookAt(*self.__position, *operateTuple(self.__position, self.__front, '+'), *self.__up) #use stars to unpack
+        gluLookAt(*self.__position, *operateTuple(self.__position, self.__front), *self.__up) #use stars to unpack
 
     def resolveForces(self, Thrust, deltaTime, Area = 16.2, mass = 1100):
         pass
@@ -111,9 +111,9 @@ def normalise(a,b,c,*d):
     else:
         return (a/magnitude, b/magnitude, c/magnitude)
 
-#Subtracts and adds tuples from each other.
+#Adds tuples with each other.
 #doesnt work with njit unfortunately
-def operateTuple(a,b,operand):
+def operateTuple(a,b):
     result = ()
     for i in range(len(a)):
         result += (a[i]+b[i],)
@@ -164,6 +164,7 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
     #We define an inner function so we can calculate arctan.This is since we can't import math or numpy into this njit func.
     #To calculate arctan, we use taylor series. This only works for small input values (here <0.1), so we otherwise use a trig identity derived from the arctan addition formula (found on https://en.wikipedia.org/wiki/List_of_trigonometric_identities) which can be expressed as arctanx = 2 * arctan(x / (1 + sqrt(1 + x^2)))
     #We use a loop to reduce x until it is smaller than 0.1, and then multiply by 2 by how many times we reduced it, essentially causing a cascading effect to get arctan.
+    #cant use recursion here as njit doesnt support it
     def arctan(x):
         i = 0
         while abs(x) > 0.1:
@@ -181,7 +182,7 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
             elif i%XLENGTH == XLENGTH-1: #same as above but for other edge
                 pass
             else:
-                if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) < 0.5:
+                if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) < 1: # check for collision
                     collisionCheckList.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH]))
                     collisionCheckList.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1]))
 
@@ -206,7 +207,7 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
                         verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[0]))
                     else:
                         verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[2*i+2]))
-    except Exception: #invalid triangle, avoid crashing
+    except Exception: #invalid triangle, avoid crashing and dont render it instead
         pass
     return verticelist, collisionCheckList
 
