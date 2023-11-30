@@ -147,14 +147,18 @@ def mapGen(heightmap, colourmap, watermask):
                 coloursList.append(pixelColour)
     return np.array(vertList), np.array(coloursList)
 
+def triThreePoints(p1,p2,p3,c):
+    glColor3fv(c)
+    glVertex3fv(p1)
+    glVertex3fv(p2)
+    glVertex3fv(p3)
+
 #renders a mesh of triangles based on the coords inputted
 def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex 3, colour
     glBegin(GL_TRIANGLES)
-    for coord in vertices:
-        glColor3fv(coord[3])
-        glVertex3fv(coord[0])
-        glVertex3fv(coord[1])
-        glVertex3fv(coord[2])
+    while vertices != []:
+        #Implement parallelisation here
+        triThreePoints(*vertices.pop()) #doing this allows up to parallelise since all threads use one stack
     glEnd()
 
 #we need to import all of these variables because numba won't know about them
