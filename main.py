@@ -82,6 +82,8 @@ class Camera:
         if keys[K_q]: #thrust testing
             self.resolveForces(0.01, deltaTime)
             pg.time.wait(1)
+        else:
+            self.__acceleration = 0
 
         self.__velocity = operateTuple(self.__velocity, self.__acceleration)
 
