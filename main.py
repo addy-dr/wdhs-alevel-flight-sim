@@ -33,6 +33,10 @@ RENDER_DISTANCE = 10
 class Camera:
     up = (0,1,0) #global definition of up independent of the camera
 
+    @njit
+    def magnitude(vector): #used by several functions
+        return (vector[0]**2 + vector[1]**2 + vector[2]**2)**(0.5)
+
     def __init__(self, position, speed):
         self.__eulerAngles = [0,0,0] #yaw, pitch, roll
         self.__position = position #x, y, z
@@ -41,6 +45,7 @@ class Camera:
         self.__front = (0,0,0)
         self.__right = (0,0,0)
         self.__up = (0,1,0)
+        self.__angleofattack = 0
 
     def getPos(self):
         return self.__position
@@ -51,7 +56,7 @@ class Camera:
     def getDir (self):
         return self.__eulerAngles
 
-    def update(self, keys, mouse):
+    def update(self, keys, mouse, deltaTime):
         #Handles the lookat system and camera movement
 
         speed = ((self.__velocity[0]**2) * (self.__velocity[1]**2) * (self.__velocity[2]**2))**(0.5) #pythagorean theorem
@@ -73,6 +78,17 @@ class Camera:
         self.__front = normalise(*tuple(direction)) #get the front normalised vector
         self.__right = normalise(*np.cross(Camera.up, self.__front))
         self.__up = np.cross(self.__front, self.__right)
+
+        if keys[K_q]: #thrust testing
+            self.resolveForces(0.01, deltaTime)
+            pg.time.wait(1)
+
+        self.__velocity = operateTuple(self.__velocity, self.__acceleration)
+
+        #newPos = ()
+        #for i in range(len(self.__front)):
+        #    newPos += ((self.__position[i]+self.__velocity[i]*deltaTime),)
+        #self.__position = newPos
 
         # Handle movement input
         if keys[K_w]:
@@ -100,11 +116,32 @@ class Camera:
         gluLookAt(*self.__position, *operateTuple(self.__position, self.__front), *self.__up) #use stars to unpack
 
     def resolveForces(self, Thrust, deltaTime, Area = 16.2, mass = 1100):
-        pass
+        
+        self.__angleofattack = math.degrees(math.asin(np.dot(self.__front[1],self.__velocity[1])/(Camera.magnitude(self.__front)*Camera.magnitude(self.__velocity)))) #by definition of dot product
+
+        if abs(self.__angleofattack) > 15: #causes stalling
+            c_d = 0
+            c_l = 0
+        else:
+            self.__angleofattack = 0.25 * round(self.__angleofattack/0.25) #rounds to closest 0.25
+            c_l, c_d = naca2412_airfoil[str(self.__angleofattack)] #get angle of attack coefficent values from database
+
+            lift = 0.5 * Camera.magnitude(self.__velocity)**2  * Area * c_l
+            drag = 0.5 * Camera.magnitude(self.__velocity)**2  * Area * c_d
+
+            text(0,850,(1, 0, 0), f"c_d: {c_d}, c_l: {c_l}")
+            text(0,900,(1, 0, 0), f"drag: {drag}, lift: {lift}")
+
+            print(c_d,c_l,lift,drag,deltaTime,Camera.magnitude(self.__velocity)**2)
+
+            vertical = (Thrust-drag) * math.sin(self.__angleofattack) + lift * math.cos(self.__angleofattack) - 9.81*mass
+            horizontal = (Thrust-drag) * math.cos(self.__angleofattack) - lift * math.sin(self.__angleofattack)
+
+            self.__acceleration = (horizontal*deltaTime*self.__front[0]/mass,vertical*deltaTime/mass,horizontal*deltaTime*self.__front[2]/mass) # x y z
 
 
 @njit #Normalises 3d vectors
-def normalise(a,b,c,*d):
+def normalise(a,b,c,*d): #*d handles any other data passed into the function that is irrelevant
     magnitude = (a**2 + b**2 + c**2)**(0.5)
     if magnitude == 0:
         return (0,0,0)
@@ -231,7 +268,7 @@ def main():
     display = (1920, 1080)
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
-    mainCam = Camera((30,3,60), 0.5) #position, speed (speed is a placeholder variable)
+    mainCam = Camera((30,3,60), 0.01) #position, speed (speed is a placeholder variable)
     glClearColor(25/255, 235/225, 235/225, 0) #sets the colour of the "sky"
 
     glMatrixMode(GL_PROJECTION)
@@ -264,25 +301,21 @@ def main():
                 pg.quit()
                 quit()
     
-            #regenerate the map for debugging purposes
             if event.type == pg.KEYDOWN:
+                #regenerate the map for debugging purposes
                 if event.key == pg.K_r:
                     mapMatrix, coloursList = mapGen()
                     pg.time.wait(1)
 
-            #dedicated crash button
-            if event.type == pg.KEYDOWN:
+                #dedicated crash button
                 if event.key == pg.K_c:
                     raise Exception("developer forced crash")
+                
         timeTaken=pg.time.get_ticks()
 
         #clear buffer
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-        
-        #update the camera with input from the user
-        mouse = pg.mouse.get_rel()
-        keys = pg.key.get_pressed()
-        mainCam.update(keys, mouse)
+    
 
         #generate the visible terrain
         verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0], mainCam.getDir()[1])
@@ -293,6 +326,11 @@ def main():
             timeTaken=1/((pg.time.get_ticks()-timeTaken)/1000)
         except Exception: #divide by zero sometimes happens when a frame is rendered instantly
             pass
+
+        #update the camera with input from the user
+        mouse = pg.mouse.get_rel()
+        keys = pg.key.get_pressed()
+        mainCam.update(keys, mouse, (1/timeTaken))
         text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
         text(0, 750, (1, 0, 0), str(mainCam.getPos()))
         text(0, 800, (1, 0, 0), str(mainCam.getDir()))
