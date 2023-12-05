@@ -40,7 +40,7 @@ class Camera:
     def __init__(self, position, speed):
         self.__eulerAngles = [0,0,0] #yaw, pitch, roll
         self.__position = position #x, y, z
-        self.__velocity = (speed,speed,speed)
+        self.__velocity = (speed,0,speed)
         self.__acceleration = (0,0,0)
         self.__front = (0,0,0)
         self.__right = (0,0,0)
@@ -80,17 +80,19 @@ class Camera:
         self.__up = np.cross(self.__front, self.__right)
 
         if keys[K_q]: #thrust testing
-            self.resolveForces(0.01, deltaTime)
+            self.resolveForces(1, deltaTime)
             pg.time.wait(1)
         else:
-            self.__acceleration = 0
+            self.__acceleration = (0,0,0)
+
+        text(0, 600, (1, 0, 0), str(self.__acceleration))
 
         self.__velocity = operateTuple(self.__velocity, self.__acceleration)
 
-        #newPos = ()
-        #for i in range(len(self.__front)):
-        #    newPos += ((self.__position[i]+self.__velocity[i]*deltaTime),)
-        #self.__position = newPos
+        newPos = ()
+        for i in range(len(self.__front)):
+            newPos += ((self.__position[i]+self.__velocity[i]*deltaTime),)
+        self.__position = newPos
 
         # Handle movement input
         if keys[K_w]:
@@ -121,26 +123,22 @@ class Camera:
         
         self.__angleofattack = math.degrees(math.asin(np.dot(self.__front[1],self.__velocity[1])/(Camera.magnitude(self.__front)*Camera.magnitude(self.__velocity)))) #by definition of dot product
 
-        if abs(self.__angleofattack) > 15: #causes stalling
+        if abs(self.__angleofattack) > 14.75: #causes stalling
             c_d = 0
             c_l = 0
         else:
             self.__angleofattack = 0.25 * round(self.__angleofattack/0.25) #rounds to closest 0.25
             c_l, c_d = naca2412_airfoil[str(self.__angleofattack)] #get angle of attack coefficent values from database
 
-            lift = 0.5 * Camera.magnitude(self.__velocity)**2  * Area * c_l
-            drag = 0.5 * Camera.magnitude(self.__velocity)**2  * Area * c_d
+            lift = 0.5 * Camera.magnitude(self.__velocity*200)**2  * Area * c_l
+            drag = 0.5 * Camera.magnitude(self.__velocity*200)**2  * Area * c_d
 
-            text(0,850,(1, 0, 0), f"c_d: {c_d}, c_l: {c_l}")
-            text(0,900,(1, 0, 0), f"drag: {drag}, lift: {lift}")
-
-            print(c_d,c_l,lift,drag,deltaTime,Camera.magnitude(self.__velocity)**2)
 
             vertical = (Thrust-drag) * math.sin(self.__angleofattack) + lift * math.cos(self.__angleofattack) - 9.81*mass
             horizontal = (Thrust-drag) * math.cos(self.__angleofattack) - lift * math.sin(self.__angleofattack)
+            print(c_d,c_l,lift,drag,vertical, horizontal, deltaTime,Camera.magnitude(self.__velocity)**2)
 
-            self.__acceleration = (horizontal*deltaTime*self.__front[0]/mass,vertical*deltaTime/mass,horizontal*deltaTime*self.__front[2]/mass) # x y z
-
+            self.__acceleration = (0.001*horizontal*deltaTime*self.__front[0]/mass,0.001*vertical*deltaTime/mass,0.001*horizontal*deltaTime*self.__front[2]/mass) # x y z
 
 @njit #Normalises 3d vectors
 def normalise(a,b,c,*d): #*d handles any other data passed into the function that is irrelevant
@@ -270,7 +268,7 @@ def main():
     display = (1920, 1080)
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
-    mainCam = Camera((30,3,60), 0.01) #position, speed (speed is a placeholder variable)
+    mainCam = Camera((30,3,60), 0.1) #position, speed (speed is a placeholder variable)
     glClearColor(25/255, 235/225, 235/225, 0) #sets the colour of the "sky"
 
     glMatrixMode(GL_PROJECTION)
