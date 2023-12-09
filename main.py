@@ -83,7 +83,8 @@ class Camera:
             self.resolveForces(1, deltaTime)
             pg.time.wait(1)
         else:
-            self.__acceleration = (0,0,0)
+            self.resolveForces(0, deltaTime)
+            pg.time.wait(1)
 
         text(0, 600, (1, 0, 0), str(self.__acceleration))
 
@@ -138,7 +139,7 @@ class Camera:
             horizontal = (Thrust-drag) * math.cos(self.__angleofattack) - lift * math.sin(self.__angleofattack)
             print(c_d,c_l,lift,drag,vertical, horizontal, deltaTime,Camera.magnitude(self.__velocity)**2)
 
-            self.__acceleration = (0.001*horizontal*deltaTime*self.__front[0]/mass,0.001*vertical*deltaTime/mass,0.001*horizontal*deltaTime*self.__front[2]/mass) # x y z
+            self.__acceleration = ((0.001*horizontal*deltaTime*self.__front[0])/mass,(0.001*vertical*deltaTime)/mass,(0.001*horizontal*deltaTime*self.__front[2])/mass) # x y z
 
 @njit #Normalises 3d vectors
 def normalise(a,b,c,*d): #*d handles any other data passed into the function that is irrelevant
