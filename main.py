@@ -81,10 +81,8 @@ class Camera:
 
         if keys[K_q]: #thrust testing
             self.resolveForces(1, deltaTime)
-            pg.time.wait(1)
         else:
             self.resolveForces(0, deltaTime)
-            pg.time.wait(1)
 
         text(0, 600, (1, 0, 0), str(self.__acceleration))
 
@@ -120,24 +118,23 @@ class Camera:
         glLoadIdentity() #as per https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
         gluLookAt(*self.__position, *operateTuple(self.__position, self.__front), *self.__up) #use stars to unpack
 
-    def resolveForces(self, Thrust, deltaTime, Area = 16.2, mass = 1100):
+    def resolveForces(self, Thrust, deltaTime, Area = 30, mass = 1100):
         
         self.__angleofattack = math.degrees(math.asin(np.dot(self.__front[1],self.__velocity[1])/(Camera.magnitude(self.__front)*Camera.magnitude(self.__velocity)))) #by definition of dot product
 
         if abs(self.__angleofattack) > 14.75: #causes stalling
-            c_d = 0
-            c_l = 0
+            c_l, c_d = naca2412_airfoil['15']
         else:
             self.__angleofattack = 0.25 * round(self.__angleofattack/0.25) #rounds to closest 0.25
             c_l, c_d = naca2412_airfoil[str(self.__angleofattack)] #get angle of attack coefficent values from database
 
-            lift = 0.5 * Camera.magnitude(self.__velocity*200)**2  * Area * c_l
-            drag = 0.5 * Camera.magnitude(self.__velocity*200)**2  * Area * c_d
+            lift = 0.5 * Camera.magnitude(self.__velocity*200)**2  * Area * c_l * 1.2
+            drag = 0.5 * Camera.magnitude(self.__velocity*200)**2  * Area * c_d * 1.2
 
 
             vertical = (Thrust-drag) * math.sin(self.__angleofattack) + lift * math.cos(self.__angleofattack) - 9.81*mass
             horizontal = (Thrust-drag) * math.cos(self.__angleofattack) - lift * math.sin(self.__angleofattack)
-            print(c_d,c_l,lift,drag,vertical, horizontal, deltaTime,Camera.magnitude(self.__velocity)**2)
+            #print(c_d,c_l,lift,drag,vertical, horizontal, deltaTime,Camera.magnitude(self.__velocity)**2)
 
             self.__acceleration = ((0.001*horizontal*deltaTime*self.__front[0])/mass,(0.001*vertical*deltaTime)/mass,(0.001*horizontal*deltaTime*self.__front[2])/mass) # x y z
 
@@ -173,11 +170,11 @@ def mapGen(heightmap, colourmap, watermask):
     for zcord in range(ZLENGTH):
         for xcord in range(XLENGTH):
             if watermask[zcord][xcord][0] != 0: # => water tile as defined in the mask
-                vertList.append((xcord/3,0.75,zcord/3)) #so render as an ocean tile
+                vertList.append((xcord,0.75,zcord)) #so render as an ocean tile
                 coloursList.append((0.56+uniform(-0.05,0.05),0.72+uniform(-0.05,0.05),0.48+uniform(-0.05,0.05))) #generic lowlying land colour. Already check in map generating function if a tile is at sea level, so this is simply the colour for terrain sloping into sea level.
                 coloursList.append((0.56+uniform(-0.05,0.05),0.72+uniform(-0.05,0.05),0.48+uniform(-0.05,0.05))) #We do this twice since each "pixel" corresponds to two polygons.
             else:
-                vertList.append((xcord/3,heightmap[zcord][xcord]/150,zcord/3))
+                vertList.append((xcord,heightmap[zcord][xcord]/150,zcord))
                 pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05)) #Convert from 0-255 RGB format to 0-1 RGB format. Random number adds colour variation for aesthetic purposes
                 coloursList.append(pixelColour) #define RGB values for all corresponding vertices
                 #We do this twice since each "pixel" corresponds to two polygons. We can afford to take more processing while loading the map at this stage.
