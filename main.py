@@ -28,7 +28,7 @@ with open("NACA2412.json", "r+") as f: #produced using the Xfoil program from .d
 #map size
 ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
-RENDER_DISTANCE = 10
+RENDER_DISTANCE = 30
 
 class Camera:
     up = (0,1,0) #global definition of up independent of the camera
@@ -79,6 +79,7 @@ class Camera:
         self.__right = normalise(*np.cross(Camera.up, self.__front))
         self.__up = np.cross(self.__front, self.__right)
 
+        """
         if keys[K_q]: #thrust testing
             self.__resolveForces(1, deltaTime)
         else:
@@ -90,7 +91,7 @@ class Camera:
 
         print("handled maths")
 
-        """
+        
         newPos = ()
         for i in range(len(self.__front)):
             newPos += ((self.__position[i]+self.__velocity[i]*deltaTime),)
@@ -179,9 +180,9 @@ def mapGen(heightmap, colourmap, watermask):
     for zcord in range(ZLENGTH):
         for xcord in range(XLENGTH):
             if watermask[zcord][xcord][0] != 0: # => water tile as defined in the mask
-                vertList.append((xcord,0.5,zcord)) #so render as an ocean tile
-                coloursList.append((0.56+uniform(-0.05,0.05),0.72+uniform(-0.05,0.05),0.48+uniform(-0.05,0.05))) #generic lowlying land colour. Already check in map generating function if a tile is at sea level, so this is simply the colour for terrain sloping into sea level.
-                coloursList.append((0.56+uniform(-0.05,0.05),0.72+uniform(-0.05,0.05),0.48+uniform(-0.05,0.05))) #We do this twice since each "pixel" corresponds to two polygons.
+                vertList.append((xcord,0.3,zcord)) #so render as an ocean tile
+                coloursList.append((0.85+uniform(-0.05,0.05),0.95+uniform(-0.05,0.05),0.85+uniform(-0.05,0.05))) #generic lowlying land colour. Already check in map generating function if a tile is at sea level, so this is simply the colour for terrain sloping into sea level.
+                coloursList.append((0.85+uniform(-0.05,0.05),0.95+uniform(-0.05,0.05),0.85+uniform(-0.05,0.05))) #We do this twice since each "pixel" corresponds to two polygons.
             else:
                 vertList.append((xcord,heightmap[zcord][xcord]/75,zcord))
                 pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05)) #Convert from 0-255 RGB format to 0-1 RGB format. Random number adds colour variation for aesthetic purposes
@@ -247,11 +248,11 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
 
                 else:
                     #the two triangles adjacent to any vertex
-                    if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 1.75: #This is only true if all three corners are at sea level
+                    if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.3: #This is only true if all three corners are at sea level
                         verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[0]))
                     else:
                         verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[2*i+1]))
-                    if mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == mapMatrix[i+XLENGTH+1][1] == 1.75: #This is only true if all three corners are at sea level
+                    if mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == mapMatrix[i+XLENGTH+1][1] == 0.3: #This is only true if all three corners are at sea level
                         verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[0]))
                     else:
                         verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[2*i+2]))
@@ -275,7 +276,7 @@ def main():
     display = (1920, 1080)
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
-    mainCam = Camera((100,4,175), 0.1) #position, speed (speed is a placeholder variable)
+    mainCam = Camera((250,4,250), 0.1) #position, speed (speed is a placeholder variable)
     glClearColor(25/255, 235/225, 235/225, 0) #sets the colour of the "sky"
 
     glMatrixMode(GL_PROJECTION)
@@ -286,9 +287,6 @@ def main():
 
     mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
     print("Map Generated")    #test
-
-    genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0], mainCam.getDir()[1]) #this first render is for debugging purposes
-    print("Map Rendered")    #test
 
     #culling settings
     glDepthMask(GL_TRUE)
@@ -322,21 +320,10 @@ def main():
 
         #clear buffer
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-        print("cleared buffer")
-    
-
-        #generate the visible terrain
-        verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0], mainCam.getDir()[1])
-        print("Vertices found")
-        renderTriangle(verticelist)
-        print("Rendering")
-        checkforcollision(colCheck, mainCam)
-        print("handled generation")
-
         try:
             timeTaken=1/((pg.time.get_ticks()-timeTaken)/1000)
         except Exception: #divide by zero sometimes happens when a frame is rendered instantly
-            pass
+            timeTaken = 1000 # small value of t
 
         #update the camera with input from the user
         mouse = pg.mouse.get_rel()
@@ -345,9 +332,14 @@ def main():
         text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
         text(0, 750, (1, 0, 0), str(mainCam.getPos()))
         text(0, 800, (1, 0, 0), str(mainCam.getDir()))
-        print("handled controls")
+
+        #generate the visible terrain
+        verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0], mainCam.getDir()[1])
+        renderTriangle(verticelist)
+        checkforcollision(colCheck, mainCam)
 
         pg.display.flip() #update window with active buffer contents
+        pg.time.wait(2)
 
 if __name__ == "__main__":
     main()
