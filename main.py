@@ -47,6 +47,9 @@ class Camera:
         self.__up = (0,1,0)
         self.__angleofattack = 0
 
+        self.__mass = 1100
+        self.__wingArea = 17
+
     def getPos(self):
         return self.__position
 
@@ -79,14 +82,15 @@ class Camera:
         self.__right = normalise(*np.cross(Camera.up, self.__front))
         self.__up = np.cross(self.__front, self.__right)
 
-        """
         if keys[K_q]: #thrust testing
             self.__resolveForces(1, deltaTime)
         else:
             self.__acceleration = [0,0,0]
 
-        text(0, 600, (1, 0, 0), str(self.__acceleration))
+        text(0, 600, (1, 0, 0), "G-Force: "+str(Camera.magnitude(self.__acceleration)/(self.__mass*9.81)))
+        text(0, 500, (1, 0, 0), "Acceleration: "+str(self.__acceleration)
 
+        """
         self.__velocity = addTuple(self.__velocity, self.__acceleration)
 
         print("handled maths")
@@ -119,13 +123,11 @@ class Camera:
             for i in range(len(self.__front)):
                 newPos += ((self.__position[i]-self.__right[i]*speed),)
             self.__position = newPos
-        print("handled input")
-        
 
         glLoadIdentity() #as per https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
         gluLookAt(*self.__position, *addTuple(self.__position, self.__front), *self.__up) #use stars to unpack
 
-    def __resolveForces(self, Thrust, deltaTime, Area = 30, mass = 1100):
+    def __resolveForces(self, Thrust, deltaTime):
         
         self.__angleofattack = math.degrees(math.asin(np.dot(self.__front[1],self.__velocity[1])/(Camera.magnitude(self.__front)*Camera.magnitude(self.__velocity)))) #by definition of dot product
 
@@ -135,16 +137,18 @@ class Camera:
             self.__angleofattack = 0.25 * round(self.__angleofattack/0.25) #rounds to closest 0.25
             c_l, c_d = naca2412_airfoil[str(self.__angleofattack)] #get angle of attack coefficent values from database
 
-            lift = 0.5 * Camera.magnitude(self.__velocity*200)**2  * Area * c_l * 1.2
-            drag = 0.5 * Camera.magnitude(self.__velocity*200)**2  * Area * c_d * 1.2
+            lift = 0.5 * Camera.magnitude(self.__velocity*200)**2  * self.__wingArea * c_l * 1.2
+            drag = 0.5 * Camera.magnitude(self.__velocity*200)**2  * self.__wingArea * c_d * 1.2
 
             self.__angleofattack = math.radians(self.__angleofattack)
 
-            vertical = (Thrust-drag) * math.sin(self.__angleofattack) + lift * math.cos(self.__angleofattack) - 9.81*mass
+            vertical = (Thrust-drag) * math.sin(self.__angleofattack) + lift * math.cos(self.__angleofattack) - 9.81*self.__mass
             horizontal = (Thrust-drag) * math.cos(self.__angleofattack) - lift * math.sin(self.__angleofattack)
             print(c_d,c_l,lift,drag,vertical, horizontal, deltaTime,Camera.magnitude(self.__velocity)**2)
 
-            self.__acceleration = ((0.001*horizontal*deltaTime*self.__front[0])/mass,(0.001*vertical*deltaTime)/mass,(0.001*horizontal*deltaTime*self.__front[2])/mass) # x y z
+            self.__acceleration =((0.001*horizontal*deltaTime*self.__front[0])/self.__mass,
+            (0.001*vertical*deltaTime)/self.__mass,
+            (0.001*horizontal*deltaTime*self.__front[2])/self.__mass) # x y z
 
         return 1
 
