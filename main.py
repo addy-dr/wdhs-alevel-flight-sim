@@ -14,7 +14,7 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
 #JIT (numba)
-from numba import njit, float32
+from numba import njit, float64
 from numba.experimental import jitclass
 
 
@@ -32,7 +32,11 @@ ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
 RENDER_DISTANCE = 30
 
-@jitclass([("__values", float32[::1])]) #define __values to be a list of contiguous floats
+def floatArray(*list): #exists for type conversion in order to work with jitclass (as seen below)
+    "Converts a list to an array of 64bit floats"
+    return np.array(list, dtype=np.float64)
+
+@jitclass([("__values", float64[::1])]) #define __values to be a list of contiguous floats
 class Vector3(): #Define a class for 3d vectors
     #class methods would work better here but theyre not compatible with jit
     @staticmethod #static method to add two vectors and return a third one
@@ -56,17 +60,23 @@ class Vector3(): #Define a class for 3d vectors
             result.append(vectorA.index(t[0])*vectorB.index(t[1]) - vectorA.index(t[1])*vectorB.index(t[0]))
         return Vector3(result) #returns a vector with the cross product as its instantiation inputs
     
-    def __init__(self, a,b,c):
-        self.__values = [a,b,c]
+    def __init__(self, arg):
+        #Note: In order to work with the vector3 function, we must pass in a numpy array with a defined data type of float64 for all values.
+        self.__values = arg
 
+    @property #decorator marks this as being a property. This is just a getter function so this is appropriate
     def val(self): #return value
         return self.__values
     
-    def index(self, n): #return a specific value
-        return self.__values[n]
+    @val.setter #setter function to change the value of the vector
+    def val(self, a, b, c):
+        self.__values = [a,b,c]
     
     def magnitude(self): #returns magnitude
         return (self.__values[0]**2 + self.__values[1]**2 + self.__values[2]**2)**(0.5)
+    
+    def index(self, n): #return a specific value
+        return self.__values[n]
     
     def normalise(self): #normalises vectors
         magnitude = self.magnitude()
@@ -79,15 +89,16 @@ class Vector3(): #Define a class for 3d vectors
                 self.index(2) / magnitude)
 
 class Camera:
-    up = Vector3(0,1,0) #global definition of up independent of the camera
+    up = Vector3(floatArray(0.0, 1.0, 0.0)) #global definition of up independent of the camera
+    #note that with Vector3, we must define all our numbers to be an ARRAY (not list) where each number is a 64 bit float
 
     def __init__(self, position):
-        self.__eulerAngles = Vector3(0,0,0) #yaw, pitch, roll
-        self.__position = Vector3(*position)    #x, y ,z
-        self.__velocity = Vector3(0,0,45)
-        self.__front = Vector3(0,0,0)
-        self.__right = Vector3(0,0,0)
-        self.__up = Vector3(0,1,0)
+        self.__eulerAngles = Vector3(floatArray(0.0, 0.0, 0.0)) #yaw, pitch, roll
+        self.__position = Vector3(floatArray(*position))    #x, y ,z
+        self.__velocity = Vector3(floatArray(.0, 0.0, 45.0))
+        self.__front = Vector3(floatArray(0.0, 0.0, 0.0))
+        self.__right = Vector3(floatArray(0.0, 0.0, 0.0))
+        self.__up = Vector3(floatArray(0.0, 1.0, 0.0))
         self.__angleofattack = 0
 
         self.__mass = 1100
@@ -106,7 +117,7 @@ class Camera:
         #Handles the lookat system and camera movement
 
         speed = 0.2
-        direction = [0,0,0]
+        direction = Vector3(np.array([0.0, 1.0, 0.0], dtype=np.float64))
 
         #camera direction
         self.__eulerAngles[0] += mouse[0]/4 #yaw
