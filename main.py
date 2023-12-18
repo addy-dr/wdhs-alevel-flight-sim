@@ -30,6 +30,20 @@ ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
 RENDER_DISTANCE = 30
 
+class Vector: #Define a class for vectors, as well as the necessary functions needed for them.
+    def __init__(self, *args): #can take in any dimension
+        self.__values = args
+        self.__len = len(args)
+
+    def val(self): #return value
+        return self.__values
+    
+    def index(self, n): #return a specific value
+        return self.__values[n]
+    
+    def len(self): #return length
+        return self.__len
+
 class Camera:
     up = (0,1,0) #global definition of up independent of the camera
 
@@ -40,7 +54,7 @@ class Camera:
     def __init__(self, position, speed):
         self.__eulerAngles = [0,0,0] #yaw, pitch, roll
         self.__position = position #x, y, z
-        self.__velocity = (0.1,0,0.1)
+        self.__velocity = (0,0,45)
         self.__acceleration = (0,0,0)
         self.__front = (0,0,0)
         self.__right = (0,0,0)
@@ -86,21 +100,20 @@ class Camera:
             self.__resolveForces(1, deltaTime)
         else:
             self.__acceleration = [0,0,0]
+            #self.__resolveForces(0, deltaTime)
 
         text(0, 600, (1, 0, 0), "G-Force: "+str(Camera.magnitude(self.__acceleration)/(self.__mass*9.81)))
-        text(0, 500, (1, 0, 0), "Acceleration: "+str(self.__acceleration)
+        text(0, 560, (1, 0, 0), "Velocity: "+str(self.__velocity))
+        text(0, 520, (1, 0, 0), "Acceleration: "+str(self.__acceleration))
+        text(0, 480, (1, 0, 0), "Front: "+str(self.__front))
 
-        """
         self.__velocity = addTuple(self.__velocity, self.__acceleration)
-
-        print("handled maths")
 
         
         newPos = ()
         for i in range(len(self.__front)):
-            newPos += ((self.__position[i]+self.__velocity[i]*deltaTime),)
+            newPos += ((self.__position[i]+self.__velocity[i]*0.0001*deltaTime),) #moves the plane, reduces scale by 10000x
         self.__position = newPos
-        """
 
         # Handle movement input
         if keys[K_w]:
@@ -129,7 +142,9 @@ class Camera:
 
     def __resolveForces(self, Thrust, deltaTime):
         
-        self.__angleofattack = math.degrees(math.asin(np.dot(self.__front[1],self.__velocity[1])/(Camera.magnitude(self.__front)*Camera.magnitude(self.__velocity)))) #by definition of dot product
+        self.__angleofattack = math.degrees(math.asin(np.dot(self.__velocity[1]/Camera.magnitude(self.__velocity),self.__front[1]))) #by definition of dot product
+
+        text(0, 440, (1, 0, 0), "Angle of Attack: "+str(self.__angleofattack))
 
         if abs(self.__angleofattack) > 14.75: #causes stalling
             c_l, c_d = naca2412_airfoil["14.75"]
@@ -137,18 +152,18 @@ class Camera:
             self.__angleofattack = 0.25 * round(self.__angleofattack/0.25) #rounds to closest 0.25
             c_l, c_d = naca2412_airfoil[str(self.__angleofattack)] #get angle of attack coefficent values from database
 
-            lift = 0.5 * Camera.magnitude(self.__velocity*200)**2  * self.__wingArea * c_l * 1.2
-            drag = 0.5 * Camera.magnitude(self.__velocity*200)**2  * self.__wingArea * c_d * 1.2
+        lift = 0.5 * Camera.magnitude(self.__velocity*200)**2  * self.__wingArea * c_l * 1.2
+        drag = 0.5 * Camera.magnitude(self.__velocity*200)**2  * self.__wingArea * c_d * 1.2
 
-            self.__angleofattack = math.radians(self.__angleofattack)
+        self.__angleofattack = math.radians(self.__angleofattack)
 
-            vertical = (Thrust-drag) * math.sin(self.__angleofattack) + lift * math.cos(self.__angleofattack) - 9.81*self.__mass
-            horizontal = (Thrust-drag) * math.cos(self.__angleofattack) - lift * math.sin(self.__angleofattack)
-            print(c_d,c_l,lift,drag,vertical, horizontal, deltaTime,Camera.magnitude(self.__velocity)**2)
+        vertical = (Thrust-drag) * math.sin(self.__angleofattack) + lift * math.cos(self.__angleofattack) - 9.81*self.__mass
+        horizontal = (Thrust-drag) * math.cos(self.__angleofattack) - lift * math.sin(self.__angleofattack)
+        print(c_d,c_l,lift,drag,vertical, horizontal, deltaTime,Camera.magnitude(self.__velocity)**2)
 
-            self.__acceleration =((0.001*horizontal*deltaTime*self.__front[0])/self.__mass,
-            (0.001*vertical*deltaTime)/self.__mass,
-            (0.001*horizontal*deltaTime*self.__front[2])/self.__mass) # x y z
+        self.__acceleration =((horizontal*deltaTime*self.__front[0])/self.__mass,
+        (vertical*deltaTime)/self.__mass,
+        (horizontal*deltaTime*self.__front[2])/self.__mass) # x y z
 
         return 1
 
@@ -303,6 +318,8 @@ def main():
     glDepthRange(0.0,1.0)
 
     ### RUN PROGRAM ###
+
+    currTime=pg.time.get_ticks() # initialise program clock
     
     while True: #allows us to actually leave the program
         for event in pg.event.get():
@@ -319,15 +336,15 @@ def main():
                 #dedicated crash button
                 if event.key == pg.K_c:
                     raise Exception("developer forced crash")
-                
-        timeTaken=pg.time.get_ticks()
 
         #clear buffer
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
         try:
-            timeTaken=1/((pg.time.get_ticks()-timeTaken)/1000)
+            timeTaken=1000/((pg.time.get_ticks()-currTime))
         except Exception: #divide by zero sometimes happens when a frame is rendered instantly
             timeTaken = 1000 # small value of t
+
+        currTime=pg.time.get_ticks()
 
         #update the camera with input from the user
         mouse = pg.mouse.get_rel()
@@ -344,6 +361,6 @@ def main():
 
         pg.display.flip() #update window with active buffer contents
         pg.time.wait(2)
-
+        
 if __name__ == "__main__":
     main()
