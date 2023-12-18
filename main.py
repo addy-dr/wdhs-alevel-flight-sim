@@ -13,7 +13,8 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
-from numba import njit
+from numba import njit, float32
+from numba.experimental import jitclass
 
 
 print("Packages successfully loaded.")
@@ -30,10 +31,32 @@ ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
 RENDER_DISTANCE = 30
 
-class Vector: #Define a class for vectors, as well as the necessary functions needed for them.
-    def __init__(self, *args): #can take in any dimension
-        self.__values = args
-        self.__len = len(args)
+@jitclass([("__values", float32[::1])]) #define __values to be a list of contiguous floats
+class Vector3(): #Define a class for 3d vectors
+
+    @staticmethod #class method to add two vectors and return a third one
+    def addVectors(cls, vectorA, vectorB):
+        result = []
+        for i in range(3):
+            result.append(vectorA.index(i)+vectorB.index(i))
+        return Vector3(result) #returns a vector with the summed values as its instantiation inputs
+    
+    @staticmethod #static method to dot product two vectors
+    def dot(vectorA, vectorB):
+        result = 0
+        for i in range(3):
+            result (vectorA.index(i) * vectorB.index(i))
+        return result
+    
+    @staticmethod #class method to cross product two vectors
+    def cross(cls, vectorA, vectorB):
+        result = []
+        for t in [(2,3),(3,1),(1,2)]: #based on mathematical definition of cross product
+            result.append(vectorA.index(t[0])*vectorB.index(t[1]) - vectorA.index(t[1])*vectorB.index(t[0]))
+        return Vector3(result) #returns a vector with the cross product as its instantiation inputs
+    
+    def __init__(self, a,b,c): # *args doesnt work with jit so we just define a, b, c
+        self.__values = [a,b,c]
 
     def val(self): #return value
         return self.__values
@@ -41,17 +64,23 @@ class Vector: #Define a class for vectors, as well as the necessary functions ne
     def index(self, n): #return a specific value
         return self.__values[n]
     
-    def len(self): #return length
-        return self.__len
+    def magnitude(self): #returns magnitude
+        return (self.__values[0]**2 + self.__values[1]**2 + self.__values[2]**2)**(0.5)
+    
+    def normalise(self): #normalises vectors
+        magnitude = self.magnitude()
+        if magnitude == 0:
+            return Vector3(0,0,0)
+        else:
+            return Vector3(
+                self.index(0) / magnitude,
+                self.index(1) / magnitude,
+                self.index(2) / magnitude)
 
 class Camera:
     up = (0,1,0) #global definition of up independent of the camera
 
-    @njit
-    def magnitude(vector): #used by several functions
-        return (vector[0]**2 + vector[1]**2 + vector[2]**2)**(0.5)
-
-    def __init__(self, position, speed):
+    def __init__(self, position, *args): #args catches any extra arguments that might be passed in
         self.__eulerAngles = [0,0,0] #yaw, pitch, roll
         self.__position = position #x, y, z
         self.__velocity = (0,0,45)
@@ -161,9 +190,11 @@ class Camera:
         horizontal = (Thrust-drag) * math.cos(self.__angleofattack) - lift * math.sin(self.__angleofattack)
         print(c_d,c_l,lift,drag,vertical, horizontal, deltaTime,Camera.magnitude(self.__velocity)**2)
 
-        self.__acceleration =((horizontal*deltaTime*self.__front[0])/self.__mass,
-        (vertical*deltaTime)/self.__mass,
-        (horizontal*deltaTime*self.__front[2])/self.__mass) # x y z
+        self.__acceleration =( # x y z
+            (horizontal*deltaTime*self.__front[0])/self.__mass,
+            (vertical*deltaTime)/self.__mass,
+            (horizontal*deltaTime*self.__front[2])/self.__mass
+        )
 
         return 1
 
