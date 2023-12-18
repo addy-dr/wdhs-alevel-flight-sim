@@ -13,6 +13,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
+#JIT (numba)
 from numba import njit, float32
 from numba.experimental import jitclass
 
@@ -33,8 +34,8 @@ RENDER_DISTANCE = 30
 
 @jitclass([("__values", float32[::1])]) #define __values to be a list of contiguous floats
 class Vector3(): #Define a class for 3d vectors
-
-    @staticmethod #class method to add two vectors and return a third one
+    #class methods would work better here but theyre not compatible with jit
+    @staticmethod #static method to add two vectors and return a third one
     def addVectors(cls, vectorA, vectorB):
         result = []
         for i in range(3):
@@ -48,14 +49,14 @@ class Vector3(): #Define a class for 3d vectors
             result (vectorA.index(i) * vectorB.index(i))
         return result
     
-    @staticmethod #class method to cross product two vectors
+    @staticmethod #static method to cross product two vectors
     def cross(cls, vectorA, vectorB):
         result = []
         for t in [(2,3),(3,1),(1,2)]: #based on mathematical definition of cross product
             result.append(vectorA.index(t[0])*vectorB.index(t[1]) - vectorA.index(t[1])*vectorB.index(t[0]))
         return Vector3(result) #returns a vector with the cross product as its instantiation inputs
     
-    def __init__(self, a,b,c): # *args doesnt work with jit so we just define a, b, c
+    def __init__(self, a,b,c):
         self.__values = [a,b,c]
 
     def val(self): #return value
@@ -78,16 +79,15 @@ class Vector3(): #Define a class for 3d vectors
                 self.index(2) / magnitude)
 
 class Camera:
-    up = (0,1,0) #global definition of up independent of the camera
+    up = Vector3(0,1,0) #global definition of up independent of the camera
 
-    def __init__(self, position, *args): #args catches any extra arguments that might be passed in
-        self.__eulerAngles = [0,0,0] #yaw, pitch, roll
-        self.__position = position #x, y, z
-        self.__velocity = (0,0,45)
-        self.__acceleration = (0,0,0)
-        self.__front = (0,0,0)
-        self.__right = (0,0,0)
-        self.__up = (0,1,0)
+    def __init__(self, position):
+        self.__eulerAngles = Vector3(0,0,0) #yaw, pitch, roll
+        self.__position = Vector3(*position)    #x, y ,z
+        self.__velocity = Vector3(0,0,45)
+        self.__front = Vector3(0,0,0)
+        self.__right = Vector3(0,0,0)
+        self.__up = Vector3(0,1,0)
         self.__angleofattack = 0
 
         self.__mass = 1100
@@ -97,7 +97,7 @@ class Camera:
         return self.__position
 
     def getXZ(self): #relevant as determining the position of the plane on a 2d coordinate map will only require XZ coordinates, Y is irrelevant
-        return [self.__position[0], self.__position[2]]
+        return [self.__position.index(0), self.__position.index(2)]
 
     def getDir (self):
         return self.__eulerAngles
@@ -326,7 +326,7 @@ def main():
     display = (1920, 1080)
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
-    mainCam = Camera((250,4,250), 0.1) #position, speed (speed is a placeholder variable)
+    mainCam = Camera((250,4,250)) #position
     glClearColor(25/255, 235/225, 235/225, 0) #sets the colour of the "sky"
 
     glMatrixMode(GL_PROJECTION)
