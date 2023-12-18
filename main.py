@@ -89,16 +89,16 @@ class Vector3(): #Define a class for 3d vectors
                 self.index(2) / magnitude)
 
 class Camera:
-    up = Vector3(floatArray(0.0, 1.0, 0.0)) #global definition of up independent of the camera
+    up = Vector3(floatArray(0, 1, 0)) #global definition of up independent of the camera
     #note that with Vector3, we must define all our numbers to be an ARRAY (not list) where each number is a 64 bit float
 
     def __init__(self, position):
-        self.__eulerAngles = Vector3(floatArray(0.0, 0.0, 0.0)) #yaw, pitch, roll
+        self.__eulerAngles = Vector3(floatArray(0, 0, 0)) #yaw, pitch, roll
         self.__position = Vector3(floatArray(*position))    #x, y ,z
-        self.__velocity = Vector3(floatArray(.0, 0.0, 45.0))
-        self.__front = Vector3(floatArray(0.0, 0.0, 0.0))
-        self.__right = Vector3(floatArray(0.0, 0.0, 0.0))
-        self.__up = Vector3(floatArray(0.0, 1.0, 0.0))
+        self.__velocity = Vector3(floatArray(0, 0, 45))
+        self.__front = Vector3(floatArray(0, 0, 0))
+        self.__right = Vector3(floatArray(0, 0, 0))
+        self.__up = Vector3(floatArray(0, 1, 0))
         self.__angleofattack = 0
 
         self.__mass = 1100
