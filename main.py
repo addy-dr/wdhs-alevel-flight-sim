@@ -32,45 +32,54 @@ ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
 RENDER_DISTANCE = 30
 
-def floatArray(*list): #exists for type conversion in order to work with jitclass (as seen below)
-    "Converts a list to an array of 64bit floats"
-    return np.array(list, dtype=np.float64)
-
 @jitclass([("__values", float64[::1])]) #define __values to be a list of contiguous floats
-class Vector3(): #Define a class for 3d vectors
+class Vector3(): #Define a class for 3d vectorss
+
     #class methods would work better here but theyre not compatible with jit
     @staticmethod #static method to add two vectors and return a third one
-    def addVectors(cls, vectorA, vectorB):
+    def addVectors(vectorA, vectorB):
         result = []
         for i in range(3):
             result.append(vectorA.index(i)+vectorB.index(i))
+        return Vector3(result) #returns a vector with the summed values as its instantiation inputs
+    
+    @staticmethod #static method to sub two vectors and return a third one
+    def subtractVectors(vectorA, vectorB):
+        result = []
+        for i in range(3):
+            result.append(vectorA.index(i)-vectorB.index(i))
         return Vector3(result) #returns a vector with the summed values as its instantiation inputs
     
     @staticmethod #static method to dot product two vectors
     def dot(vectorA, vectorB):
         result = 0
         for i in range(3):
-            result (vectorA.index(i) * vectorB.index(i))
+            result += (vectorA.index(i) * vectorB.index(i))
         return result
     
     @staticmethod #static method to cross product two vectors
-    def cross(cls, vectorA, vectorB):
+    def cross(vectorA, vectorB):
         result = []
-        for t in [(2,3),(3,1),(1,2)]: #based on mathematical definition of cross product
+        for t in [(1,2),(2,0),(0,1)]: #based on mathematical definition of cross product
             result.append(vectorA.index(t[0])*vectorB.index(t[1]) - vectorA.index(t[1])*vectorB.index(t[0]))
         return Vector3(result) #returns a vector with the cross product as its instantiation inputs
     
     def __init__(self, arg):
         #Note: In order to work with the vector3 function, we must pass in a numpy array with a defined data type of float64 for all values.
-        self.__values = arg
+        self.__values = np.array(arg, dtype=np.float64)
 
     @property #decorator marks this as being a property. This is just a getter function so this is appropriate
     def val(self): #return value
         return self.__values
     
-    @val.setter #setter function to change the value of the vector
-    def val(self, a, b, c):
-        self.__values = [a,b,c]
+    #setter function to change the value of the vector
+    def setVal(self, a):
+        self.__values = np.array(a, dtype=np.float64)
+
+    #add values to existing vals
+    def addVal(self, a):
+        for i in range(3):
+            self.__values[i] += a[i]
     
     def magnitude(self): #returns magnitude
         return (self.__values[0]**2 + self.__values[1]**2 + self.__values[2]**2)**(0.5)
@@ -78,27 +87,31 @@ class Vector3(): #Define a class for 3d vectors
     def index(self, n): #return a specific value
         return self.__values[n]
     
-    def normalise(self): #normalises vectors
+    def setAt(self, n, val): #sets the value of the varable at n to val
+        self.__values[n] = val
+    
+    def normalise(self): #normalises vectors. Since we can't import our zero vector into here since it uses a numpy definition, we need to set a fallback whenever we call this function instead.
         magnitude = self.magnitude()
         if magnitude == 0:
-            return Vector3(0,0,0)
+            return Vector3([0,0,0])
         else:
-            return Vector3(
+            return Vector3([
                 self.index(0) / magnitude,
                 self.index(1) / magnitude,
-                self.index(2) / magnitude)
+                self.index(2) / magnitude])
 
 class Camera:
-    up = Vector3(floatArray(0, 1, 0)) #global definition of up independent of the camera
+    up = Vector3([0, 1, 0]) #global definition of up independent of the camera
     #note that with Vector3, we must define all our numbers to be an ARRAY (not list) where each number is a 64 bit float
 
     def __init__(self, position):
-        self.__eulerAngles = Vector3(floatArray(0, 0, 0)) #yaw, pitch, roll
-        self.__position = Vector3(floatArray(*position))    #x, y ,z
-        self.__velocity = Vector3(floatArray(0, 0, 45))
-        self.__front = Vector3(floatArray(0, 0, 0))
-        self.__right = Vector3(floatArray(0, 0, 0))
-        self.__up = Vector3(floatArray(0, 1, 0))
+        self.__eulerAngles = Vector3([0,0,0]) #yaw, pitch, roll
+        self.__position = Vector3(position)    #x, y ,z
+        self.__velocity = Vector3([0, 0, 45])
+        self.__acceleration = Vector3([0,0,0])
+        self.__front = Vector3([0,0,0])
+        self.__right = Vector3([0,0,0])
+        self.__up = Vector3([0, 1, 0])
         self.__angleofattack = 0
 
         self.__mass = 1100
@@ -117,68 +130,66 @@ class Camera:
         #Handles the lookat system and camera movement
 
         speed = 0.2
-        direction = Vector3(np.array([0.0, 1.0, 0.0], dtype=np.float64))
+        direction = Vector3([0, 1, 0])
 
         #camera direction
-        self.__eulerAngles[0] += mouse[0]/4 #yaw
-        self.__eulerAngles[1] -= mouse[1]/4 #pitch
-        if self.__eulerAngles[1] > 89: #keep pitch to 180 degree bounds
-            self.__eulerAngles[1] = 89
-        if self.__eulerAngles[1] < -89:
-            self.__eulerAngles[1] = -89
-        self.__eulerAngles[0] = self.__eulerAngles[0] % 360 #keep yaw within the bounds
+        self.__eulerAngles.addVal(np.array([mouse[0]/4, -mouse[1]/4, 0], dtype=np.float64)) #yaw, pitch, roll
+        if self.__eulerAngles.index(1) > 89: #keep pitch to 180 degree bounds
+            self.__eulerAngles.setAt(1,89)
+        if self.__eulerAngles.index(1) < -89:
+            self.__eulerAngles.setAt(1,-89)
+        self.__eulerAngles.setAt(0,self.__eulerAngles.index(0) % 360) #keep yaw within the bounds
 
         #From drawing trigonemtric diagrams:
-        direction[0] = math.cos(math.radians(self.__eulerAngles[0])) * math.cos(math.radians(self.__eulerAngles[1]))
-        direction[1] = math.sin(math.radians(self.__eulerAngles[1]))
-        direction[2] = math.sin(math.radians(self.__eulerAngles[0])) * math.cos(math.radians(self.__eulerAngles[1]))
-        self.__front = normalise(*tuple(direction)) #get the front normalised vector
-        self.__right = normalise(*np.cross(Camera.up, self.__front))
-        self.__up = np.cross(self.__front, self.__right)
+        direction.setVal([math.cos(math.radians(self.__eulerAngles.index(0))) * math.cos(math.radians(self.__eulerAngles.index(1))),
+        math.sin(math.radians(self.__eulerAngles.index(1))),
+        math.sin(math.radians(self.__eulerAngles.index(0))) * math.cos(math.radians(self.__eulerAngles.index(1)))])
+        self.__front = direction.normalise() #get the front normalised vector
+        self.__right = (Vector3.cross(Camera.up, self.__front)).normalise()
+        self.__up = Vector3.cross(self.__front, self.__right)
 
-        if keys[K_q]: #thrust testing
+        """if keys[K_q]: #thrust testing
             self.__resolveForces(1, deltaTime)
         else:
-            self.__acceleration = [0,0,0]
-            #self.__resolveForces(0, deltaTime)
+            self.__acceleration = Vector3([0,0,0])
+            self.__resolveForces(0, deltaTime)"""
 
-        text(0, 600, (1, 0, 0), "G-Force: "+str(Camera.magnitude(self.__acceleration)/(self.__mass*9.81)))
-        text(0, 560, (1, 0, 0), "Velocity: "+str(self.__velocity))
-        text(0, 520, (1, 0, 0), "Acceleration: "+str(self.__acceleration))
-        text(0, 480, (1, 0, 0), "Front: "+str(self.__front))
+        text(0, 600, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(self.__mass*9.81)))
+        text(0, 560, (1, 0, 0), "Velocity: "+str(self.__velocity.val))
+        text(0, 520, (1, 0, 0), "Acceleration: "+str(self.__acceleration.val))
+        text(0, 480, (1, 0, 0), "Front: "+str(self.__front.val))
 
-        self.__velocity = addTuple(self.__velocity, self.__acceleration)
+        self.__velocity = Vector3.addVectors(self.__velocity, self.__acceleration)
 
-        
-        newPos = ()
-        for i in range(len(self.__front)):
-            newPos += ((self.__position[i]+self.__velocity[i]*0.0001*deltaTime),) #moves the plane, reduces scale by 10000x
-        self.__position = newPos
+        newPos = []
+        for i in range(3): #3 values in a Vector3
+            newPos.append(self.__position.index(i)+self.__velocity.index(i)*0.0001*deltaTime) #moves the plane, reduces scale by 10000x
+        self.__position.setVal(newPos)
 
         # Handle movement input
         if keys[K_w]:
-            newPos = ()
-            for i in range(len(self.__front)):
-                newPos += ((self.__position[i]+self.__front[i]*speed),)
-            self.__position = newPos
+            newPos = []
+            for i in range(3):
+                newPos.append(self.__position.index(i)+self.__front.index(i)*speed)
+            self.__position.setVal(newPos)
         if keys[K_s]:
-            newPos = ()
-            for i in range(len(self.__front)):
-                newPos += ((self.__position[i]-self.__front[i]*speed),)
-            self.__position = newPos
+            newPos = []
+            for i in range(3):
+                newPos.append(self.__position.index(i)-self.__front.index(i)*speed)
+            self.__position.setVal(newPos)
         if keys[K_a]:
-            newPos = ()
-            for i in range(len(self.__front)):
-                newPos += ((self.__position[i]+self.__right[i]*speed),)
-            self.__position = newPos
+            newPos = []
+            for i in range(3):
+                newPos.append(self.__position.index(i)+self.__right.index(i)*speed)
+            self.__position.setVal(newPos)
         if keys[K_d]:
-            newPos = ()
-            for i in range(len(self.__front)):
-                newPos += ((self.__position[i]-self.__right[i]*speed),)
-            self.__position = newPos
+            newPos = []
+            for i in range(3):
+                newPos.append(self.__position.index(i)-self.__right.index(i)*speed)
+            self.__position.setVal(newPos)
 
         glLoadIdentity() #as per https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
-        gluLookAt(*self.__position, *addTuple(self.__position, self.__front), *self.__up) #use stars to unpack
+        gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val) #use stars to unpack
 
     def __resolveForces(self, Thrust, deltaTime):
         
@@ -227,11 +238,12 @@ def addTuple(a,b):
 
 def checkforcollision(triangles, Camera):
     for triangle in triangles:
-        p1 = triangle[0]
-        p2 = triangle[1]
-        p3 = triangle[2]
-        normal = np.cross(p2-p1, p3-p1)
-        if np.dot(normal, Camera.getPos()) <= np.dot(normal, p1):
+        p1 = Vector3(list(triangle[0]))
+        p2 = Vector3(list(triangle[1]))
+        p3 = Vector3(list(triangle[2]))
+        normal = Vector3.cross(Vector3.subtractVectors(p2,p1),
+                               Vector3.subtractVectors(p3,p1))
+        if Vector3.dot(normal, Camera.getPos()) <= Vector3.dot(normal, p1):
             text(800, 800, (1, 0, 0), "CRASHED!")
 
 def mapGen(heightmap, colourmap, watermask):
@@ -328,6 +340,7 @@ def text(x, y, color, text):
     glutBitmapString(GLUT_BITMAP_HELVETICA_18, text.encode('ascii'))
 
 def main():
+
     pg.init()
     pg.font.init()
     glutInit()
@@ -393,11 +406,11 @@ def main():
         keys = pg.key.get_pressed()
         mainCam.update(keys, mouse, (1/timeTaken))
         text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
-        text(0, 750, (1, 0, 0), str(mainCam.getPos()))
-        text(0, 800, (1, 0, 0), str(mainCam.getDir()))
+        text(0, 750, (1, 0, 0), str(mainCam.getPos().val))
+        text(0, 800, (1, 0, 0), str(mainCam.getDir().val))
 
         #generate the visible terrain
-        verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir()[0], mainCam.getDir()[1])
+        verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir().index(0), mainCam.getDir().index(1))
         renderTriangle(verticelist)
         checkforcollision(colCheck, mainCam)
 
