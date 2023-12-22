@@ -161,7 +161,7 @@ class Camera:
         self.__resolveForces(deltaTime)
 
         for i in range(0,3): #Accelerate the velocity. Make sure the value on the axes doesnt surpass 40ms⁻1, which is the hardcoded limit.
-            newVelocity = self.__velocity.val[i]+self.__acceleration.val[i] > 40
+            newVelocity = self.__velocity.val[i]+self.__acceleration.val[i]
             if newVelocity > 40:
                 self.__velocity.setAt(i,40)
             elif newVelocity < -40:
