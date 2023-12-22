@@ -109,7 +109,10 @@ class Camera:
         self.__front = Vector3([0,0,0])
         self.__right = Vector3([0,0,0])
         self.__up = Vector3([0, 1, 0])
+
         self.__angleofattack = 0
+        self.__climbangle = 0
+        self.__thrust = 0
 
         self.__mass = 1100
         self.__wingArea = 17
@@ -145,22 +148,26 @@ class Camera:
         self.__right = (Vector3.cross(Camera.up, self.__front)).normalise()
         self.__up = Vector3.cross(self.__front, self.__right)
 
+        if keys[K_z]: #thrust
+            self.__thrust += 100
+        if keys[K_x]:
+            self.__thrust -= 100
 
+        if self.__thrust > 15000:
+            self.__thrust = 15000
+        if self.__thrust < 0:
+            self.__thrust = 0
 
-        if keys[K_q]: #thrust testing
-            self.__resolveForces(1000, deltaTime)
-        else:
-            self.__resolveForces(0, deltaTime)
+        self.__resolveForces(deltaTime)
 
-        text(0, 600, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(self.__mass*9.81)))
-        text(0, 560, (1, 0, 0), "Velocity: "+str(self.__velocity.val))
-        text(0, 520, (1, 0, 0), "Acceleration: "+str(self.__acceleration.val))
-        text(0, 480, (1, 0, 0), "Front: "+str(self.__front.val))
-
-        self.__velocity = Vector3.addVectors(self.__velocity, self.__acceleration)
-        
-        if self.__velocity.magnitude() > 65:
-            Vector3.subtractVectors(self.__velocity, self.__acceleration)
+        for i in range(0,3): #Accelerate the velocity. Make sure the value on the axes doesnt surpass 40ms⁻1, which is the hardcoded limit.
+            newVelocity = self.__velocity.val[i]+self.__acceleration.val[i] > 40
+            if newVelocity > 40:
+                self.__velocity.setAt(i,40)
+            elif newVelocity < -40:
+                self.__velocity.setAt(i,-40)
+            else:
+                self.__velocity.setAt(i,newVelocity)
 
         newPos = []
         for i in range(3): #3 values in a Vector3
@@ -192,15 +199,25 @@ class Camera:
         glLoadIdentity() #as per explanation in https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
         gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val) #use stars to unpack
 
-    def __resolveForces(self, thrust, deltaTime):
+        text(0, 640, (1, 0, 0), "Thrust: "+str(self.__thrust))
+        text(0, 600, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(self.__mass*9.81)))
+        text(0, 560, (1, 0, 0), "Velocity: "+str(self.__velocity.val))
+        text(0, 520, (1, 0, 0), "Acceleration: "+str(self.__acceleration.val))
+        text(0, 480, (1, 0, 0), "Front: "+str(self.__front.val))
+
+    def __resolveForces(self, deltaTime):
 
         self.__angleofattack = math.degrees(math.asin(
             Vector3.subtractVectors(self.__front, self.__velocity.normalise()).normalise().val[1],
             )) #via trigonemtry. We normalise twice, once to get rid of velocity magnitude, second time to simplifcy c=a/h calculation
-
-        text(0, 440, (1, 0, 0), "Angle of Attack: "+str(self.__angleofattack))
         
-        if abs(self.__angleofattack) > 14.75: #causes stalling
+        self.__climbangle = math.degrees(math.asin(
+            self.__front.val[1],
+            )) #via trigonemtry. 
+
+        text(0, 440, (1, 0, 0), "Climbangle: "+str(self.__climbangle))
+        
+        if abs(self.__angleofattack) > 14.5:
             c_l, c_d = naca2412_airfoil["14.75"]
         else:
             self.__angleofattack = 0.25 * round(self.__angleofattack*4) #rounds to closest 0.25
@@ -209,22 +226,26 @@ class Camera:
         lift = 0.5 * self.__velocity.magnitude()**2  * self.__wingArea * c_l * 1.2 #1.2 is the density of air
         drag = 0.5 * self.__velocity.magnitude()**2  * self.__wingArea * c_d * 1.2
 
-        if lift > 10000: #set upper cap for lift in case of bug
-            lift = 50000
-        if drag > 10000: #set upper cap for drag in case os
-            drag = 50000
+        if lift > 15000: #set upper cap for lift in case of bug
+            lift = 15000
+        if drag > 15000: #set upper cap for drag in case os
+            drag = 15000
 
         self.__angleofattack = math.radians(self.__angleofattack)
+        self.__climbangle = math.radians(self.__climbangle)
 
-        vertical = (thrust-drag) * abs(math.sin(self.__angleofattack)) + lift * math.cos(self.__angleofattack) - 9.81*self.__mass
-        horizontal = (thrust-drag) * math.cos(self.__angleofattack) - lift * abs(math.sin(self.__angleofattack))
+        vertical = (self.__thrust-drag) * abs(math.sin(self.__climbangle)) + lift * math.cos(self.__climbangle) - 9.81*self.__mass
+        horizontal = (self.__thrust-drag) * math.cos(self.__climbangle) - lift * math.sin(self.__climbangle) 
 
         text(0, 400, (1, 0, 0), "Vertical: "+str(vertical))
         text(0, 360, (1, 0, 0), "Horizontal: "+str(horizontal))
         text(0, 320, (1, 0, 0), "Lift: "+str(lift))
         text(0, 280, (1, 0, 0), "Drag: "+str(drag))
 
-        if thrust < drag: #act against velocity to slow down plane.
+        if self.__velocity.val[0] * self.__acceleration.val[0] > 0 and horizontal < 0: # drag would cause acceleration instead of deceleration if this is true.
+            horizontal = 0
+
+        if self.__thrust < drag: #act against velocity to slow down plane. If removed, causes infinite acceleration in the opposite way the plane is facing when 0 thrust
             self.__acceleration = Vector3([ # x y z
                 (horizontal*deltaTime*self.__velocity.normalise().val[0])/self.__mass,
                 (vertical*deltaTime)/self.__mass,
@@ -420,7 +441,7 @@ def main():
         checkforcollision(colCheck, mainCam)
 
         pg.display.flip() #update window with active buffer contents
-        pg.time.wait(2)
+        pg.time.wait(10)
         
 if __name__ == "__main__":
     main()
