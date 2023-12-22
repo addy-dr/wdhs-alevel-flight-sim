@@ -40,28 +40,28 @@ class Vector3(): #Define a class for 3d vectorss
     def addVectors(vectorA, vectorB):
         result = []
         for i in range(3):
-            result.append(vectorA.index(i)+vectorB.index(i))
+            result.append(vectorA.val[i]+vectorB.val[i])
         return Vector3(result) #returns a vector with the summed values as its instantiation inputs
     
     @staticmethod #static method to sub two vectors and return a third one
     def subtractVectors(vectorA, vectorB):
         result = []
         for i in range(3):
-            result.append(vectorA.index(i)-vectorB.index(i))
+            result.append(vectorA.val[i]-vectorB.val[i])
         return Vector3(result) #returns a vector with the summed values as its instantiation inputs
     
     @staticmethod #static method to dot product two vectors
     def dot(vectorA, vectorB):
         result = 0
         for i in range(3):
-            result += (vectorA.index(i) * vectorB.index(i))
+            result += (vectorA.val[i] * vectorB.val[i])
         return result
     
     @staticmethod #static method to cross product two vectors
     def cross(vectorA, vectorB):
         result = []
         for t in [(1,2),(2,0),(0,1)]: #based on mathematical definition of cross product
-            result.append(vectorA.index(t[0])*vectorB.index(t[1]) - vectorA.index(t[1])*vectorB.index(t[0]))
+            result.append(vectorA.val[t[0]]*vectorB.val[t[1]] - vectorA.val[t[1]]*vectorB.val[t[0]])
         return Vector3(result) #returns a vector with the cross product as its instantiation inputs
     
     def __init__(self, arg):
@@ -84,9 +84,6 @@ class Vector3(): #Define a class for 3d vectorss
     def magnitude(self): #returns magnitude
         return (self.__values[0]**2 + self.__values[1]**2 + self.__values[2]**2)**(0.5)
     
-    def index(self, n): #return a specific value
-        return self.__values[n]
-    
     def setAt(self, n, val): #sets the value of the varable at n to val
         self.__values[n] = val
     
@@ -96,9 +93,9 @@ class Vector3(): #Define a class for 3d vectorss
             return Vector3([0,0,0])
         else:
             return Vector3([
-                self.index(0) / magnitude,
-                self.index(1) / magnitude,
-                self.index(2) / magnitude])
+                self.val[0] / magnitude,
+                self.val[1] / magnitude,
+                self.val[2] / magnitude])
 
 class Camera:
     up = Vector3([0, 1, 0]) #global definition of up independent of the camera
@@ -107,7 +104,7 @@ class Camera:
     def __init__(self, position):
         self.__eulerAngles = Vector3([0,0,0]) #yaw, pitch, roll
         self.__position = Vector3(position)    #x, y ,z
-        self.__velocity = Vector3([0, 0, 45])
+        self.__velocity = Vector3([0, 0, 0])
         self.__acceleration = Vector3([0,0,0])
         self.__front = Vector3([0,0,0])
         self.__right = Vector3([0,0,0])
@@ -121,7 +118,7 @@ class Camera:
         return self.__position
 
     def getXZ(self): #relevant as determining the position of the plane on a 2d coordinate map will only require XZ coordinates, Y is irrelevant
-        return [self.__position.index(0), self.__position.index(2)]
+        return [self.__position.val[0], self.__position.val[2]]
 
     def getDir (self):
         return self.__eulerAngles
@@ -134,25 +131,26 @@ class Camera:
 
         #camera direction
         self.__eulerAngles.addVal(np.array([mouse[0]/4, -mouse[1]/4, 0], dtype=np.float64)) #yaw, pitch, roll
-        if self.__eulerAngles.index(1) > 89: #keep pitch to 180 degree bounds
+        if self.__eulerAngles.val[1] > 89: #keep pitch to 180 degree bounds
             self.__eulerAngles.setAt(1,89)
-        if self.__eulerAngles.index(1) < -89:
+        if self.__eulerAngles.val[1] < -89:
             self.__eulerAngles.setAt(1,-89)
-        self.__eulerAngles.setAt(0,self.__eulerAngles.index(0) % 360) #keep yaw within the bounds
+        self.__eulerAngles.setAt(0,self.__eulerAngles.val[0] % 360) #keep yaw within the bounds
 
         #From drawing trigonemtric diagrams:
-        direction.setVal([math.cos(math.radians(self.__eulerAngles.index(0))) * math.cos(math.radians(self.__eulerAngles.index(1))),
-        math.sin(math.radians(self.__eulerAngles.index(1))),
-        math.sin(math.radians(self.__eulerAngles.index(0))) * math.cos(math.radians(self.__eulerAngles.index(1)))])
+        direction.setVal([math.cos(math.radians(self.__eulerAngles.val[0])) * math.cos(math.radians(self.__eulerAngles.val[1])),
+        math.sin(math.radians(self.__eulerAngles.val[1])),
+        math.sin(math.radians(self.__eulerAngles.val[0])) * math.cos(math.radians(self.__eulerAngles.val[1]))])
         self.__front = direction.normalise() #get the front normalised vector
         self.__right = (Vector3.cross(Camera.up, self.__front)).normalise()
         self.__up = Vector3.cross(self.__front, self.__right)
 
-        """if keys[K_q]: #thrust testing
-            self.__resolveForces(1, deltaTime)
+
+
+        if keys[K_q]: #thrust testing
+            self.__resolveForces(1000, deltaTime)
         else:
-            self.__acceleration = Vector3([0,0,0])
-            self.__resolveForces(0, deltaTime)"""
+            self.__resolveForces(0, deltaTime)
 
         text(0, 600, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(self.__mass*9.81)))
         text(0, 560, (1, 0, 0), "Velocity: "+str(self.__velocity.val))
@@ -160,81 +158,88 @@ class Camera:
         text(0, 480, (1, 0, 0), "Front: "+str(self.__front.val))
 
         self.__velocity = Vector3.addVectors(self.__velocity, self.__acceleration)
+        
+        if self.__velocity.magnitude() > 65:
+            Vector3.subtractVectors(self.__velocity, self.__acceleration)
 
         newPos = []
         for i in range(3): #3 values in a Vector3
-            newPos.append(self.__position.index(i)+self.__velocity.index(i)*0.0001*deltaTime) #moves the plane, reduces scale by 10000x
+            newPos.append(self.__position.val[i]+self.__velocity.val[i]*0.001*deltaTime) #moves the plane, reduces scale by 10000x
         self.__position.setVal(newPos)
 
         # Handle movement input
         if keys[K_w]:
             newPos = []
             for i in range(3):
-                newPos.append(self.__position.index(i)+self.__front.index(i)*speed)
+                newPos.append(self.__position.val[i]+self.__front.val[i]*speed)
             self.__position.setVal(newPos)
         if keys[K_s]:
             newPos = []
             for i in range(3):
-                newPos.append(self.__position.index(i)-self.__front.index(i)*speed)
+                newPos.append(self.__position.val[i]-self.__front.val[i]*speed)
             self.__position.setVal(newPos)
         if keys[K_a]:
             newPos = []
             for i in range(3):
-                newPos.append(self.__position.index(i)+self.__right.index(i)*speed)
+                newPos.append(self.__position.val[i]+self.__right.val[i]*speed)
             self.__position.setVal(newPos)
         if keys[K_d]:
             newPos = []
             for i in range(3):
-                newPos.append(self.__position.index(i)-self.__right.index(i)*speed)
+                newPos.append(self.__position.val[i]-self.__right.val[i]*speed)
             self.__position.setVal(newPos)
 
-        glLoadIdentity() #as per https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
+        glLoadIdentity() #as per explanation in https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
         gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val) #use stars to unpack
 
-    def __resolveForces(self, Thrust, deltaTime):
-        
-        self.__angleofattack = math.degrees(math.asin(np.dot(self.__velocity[1]/Camera.magnitude(self.__velocity),self.__front[1]))) #by definition of dot product
+    def __resolveForces(self, thrust, deltaTime):
+
+        self.__angleofattack = math.degrees(math.asin(
+            Vector3.subtractVectors(self.__front, self.__velocity.normalise()).normalise().val[1],
+            )) #via trigonemtry. We normalise twice, once to get rid of velocity magnitude, second time to simplifcy c=a/h calculation
 
         text(0, 440, (1, 0, 0), "Angle of Attack: "+str(self.__angleofattack))
-
+        
         if abs(self.__angleofattack) > 14.75: #causes stalling
             c_l, c_d = naca2412_airfoil["14.75"]
         else:
-            self.__angleofattack = 0.25 * round(self.__angleofattack/0.25) #rounds to closest 0.25
+            self.__angleofattack = 0.25 * round(self.__angleofattack*4) #rounds to closest 0.25
             c_l, c_d = naca2412_airfoil[str(self.__angleofattack)] #get angle of attack coefficent values from database
 
-        lift = 0.5 * Camera.magnitude(self.__velocity*200)**2  * self.__wingArea * c_l * 1.2
-        drag = 0.5 * Camera.magnitude(self.__velocity*200)**2  * self.__wingArea * c_d * 1.2
+        lift = 0.5 * self.__velocity.magnitude()**2  * self.__wingArea * c_l * 1.2 #1.2 is the density of air
+        drag = 0.5 * self.__velocity.magnitude()**2  * self.__wingArea * c_d * 1.2
+
+        if lift > 10000: #set upper cap for lift in case of bug
+            lift = 50000
+        if drag > 10000: #set upper cap for drag in case os
+            drag = 50000
 
         self.__angleofattack = math.radians(self.__angleofattack)
 
-        vertical = (Thrust-drag) * math.sin(self.__angleofattack) + lift * math.cos(self.__angleofattack) - 9.81*self.__mass
-        horizontal = (Thrust-drag) * math.cos(self.__angleofattack) - lift * math.sin(self.__angleofattack)
-        print(c_d,c_l,lift,drag,vertical, horizontal, deltaTime,Camera.magnitude(self.__velocity)**2)
+        vertical = (thrust-drag) * abs(math.sin(self.__angleofattack)) + lift * math.cos(self.__angleofattack) - 9.81*self.__mass
+        horizontal = (thrust-drag) * math.cos(self.__angleofattack) - lift * abs(math.sin(self.__angleofattack))
 
-        self.__acceleration =( # x y z
-            (horizontal*deltaTime*self.__front[0])/self.__mass,
-            (vertical*deltaTime)/self.__mass,
-            (horizontal*deltaTime*self.__front[2])/self.__mass
-        )
+        text(0, 400, (1, 0, 0), "Vertical: "+str(vertical))
+        text(0, 360, (1, 0, 0), "Horizontal: "+str(horizontal))
+        text(0, 320, (1, 0, 0), "Lift: "+str(lift))
+        text(0, 280, (1, 0, 0), "Drag: "+str(drag))
+
+        if thrust < drag: #act against velocity to slow down plane.
+            self.__acceleration = Vector3([ # x y z
+                (horizontal*deltaTime*self.__velocity.normalise().val[0])/self.__mass,
+                (vertical*deltaTime)/self.__mass,
+                (horizontal*deltaTime*self.__velocity.normalise().val[2])/self.__mass
+            ])
+        else:
+            self.__acceleration = Vector3([ # x y z
+                (horizontal*deltaTime*self.__front.val[0])/self.__mass,
+                (vertical*deltaTime)/self.__mass,
+                (horizontal*deltaTime*self.__front.val[2])/self.__mass
+            ])
 
         return 1
 
-@njit #Normalises 3d vectors
-def normalise(a,b,c,*d): #*d handles any other data passed into the function that is irrelevant
-    magnitude = (a**2 + b**2 + c**2)**(0.5)
-    if magnitude == 0:
-        return (0,0,0)
-    else:
-        return (a/magnitude, b/magnitude, c/magnitude)
 
-#Adds tuples with each other.
-#doesnt work with njit unfortunately
-def addTuple(a,b):
-    result = ()
-    for i in range(len(a)):
-        result += (a[i]+b[i],)
-    return result
 
 def checkforcollision(triangles, Camera):
     for triangle in triangles:
@@ -410,7 +415,7 @@ def main():
         text(0, 800, (1, 0, 0), str(mainCam.getDir().val))
 
         #generate the visible terrain
-        verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir().index(0), mainCam.getDir().index(1))
+        verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
         renderTriangle(verticelist)
         checkforcollision(colCheck, mainCam)
 
