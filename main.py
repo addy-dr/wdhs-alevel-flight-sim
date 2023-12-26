@@ -167,12 +167,19 @@ class Camera:
             else:
                 self.__eulerAngularVelocity.addVal(np.array([-0.02, 0, 0], dtype=np.float64))
 
+        # ailerons and elevator handled by the same block of code #
         if keys[K_e]: #pitch: elevator
             if self.__eulerAngularVelocity.val[1] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0.005, 0], dtype=np.float64))
         elif keys[K_d]:
             if self.__eulerAngularVelocity.val[1] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([0, -0.005, 0], dtype=np.float64))
+        elif (keys[K_q] and keys[K_r]): #ailerons both in same direction
+            if self.__eulerAngularVelocity.val[1] < 30:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0.0025, 0], dtype=np.float64))
+        elif (keys[K_a] and  keys[K_f]):
+            if self.__eulerAngularVelocity.val[1] > -30:
+                self.__eulerAngularVelocity.addVal(np.array([0, -0.0025, 0], dtype=np.float64))
         else: #elevator is neutral
             if abs(self.__eulerAngularVelocity.val[1]) < 0.1:
                self.__eulerAngularVelocity.setAt(1,0)
@@ -180,15 +187,9 @@ class Camera:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0.02, 0], dtype=np.float64))
             else:
                 self.__eulerAngularVelocity.addVal(np.array([0, -0.02, 0], dtype=np.float64))
-
-        # Ailerons: If only one active, rotate with half efficency. If both open in same direction, increase pitch slightly. If both active in opposite directions, rotate.
-        if (keys[K_q] and keys[K_r]): #both in same direction
-            if self.__eulerAngularVelocity.val[1] < 30:
-                self.__eulerAngularVelocity.addVal(np.array([0, 0.01, 0], dtype=np.float64))
-        elif (keys[K_a] and  keys[K_f]):
-            if self.__eulerAngularVelocity.val[1] > -30:
-                self.__eulerAngularVelocity.addVal(np.array([0, -0.01, 0], dtype=np.float64))
-        else:
+            
+            # Ailerons: If only one active, rotate with half efficency. If both open in same direction, increase pitch slightly. If both active in opposite directions, rotate.
+            
             if keys[K_a]: #clockwise
                 if self.__eulerAngularVelocity.val[2] < 30:
                     self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.0025], dtype=np.float64))
@@ -199,9 +200,9 @@ class Camera:
                 if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
                     self.__eulerAngularVelocity.setAt(2,0)
                 elif self.__eulerAngularVelocity.val[2] < 0:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.01], dtype=np.float64))
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.002], dtype=np.float64))
                 else:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.01], dtype=np.float64))
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.002], dtype=np.float64))
             
             if keys[K_r]: #clockwise
                 if self.__eulerAngularVelocity.val[2] < 30:
@@ -213,9 +214,9 @@ class Camera:
                 if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
                     self.__eulerAngularVelocity.setAt(2,0)
                 elif self.__eulerAngularVelocity.val[2] < 0:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.01], dtype=np.float64))
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.002], dtype=np.float64))
                 else:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.01], dtype=np.float64))
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.002], dtype=np.float64))
             
 
         self.__eulerAngles.addVal(self.__eulerAngularVelocity.val) #yaw, pitch, roll
