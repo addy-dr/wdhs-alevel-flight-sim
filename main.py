@@ -34,8 +34,7 @@ RENDER_DISTANCE = 30
 
 @jitclass([("__values", float64[::1])]) #define __values to be a list of contiguous floats
 class Vector3(): #Define a class for 3d vectorss
-
-    #class methods would work better here but theyre not compatible with jit
+    #class methods don't work with JIT
     @staticmethod #static method to add two vectors and return a third one
     def addVectors(vectorA, vectorB):
         result = []
@@ -80,6 +79,12 @@ class Vector3(): #Define a class for 3d vectorss
     def addVal(self, a):
         for i in range(3):
             self.__values[i] += a[i]
+
+    def multiply(self, a):
+        result = []
+        for i in range(3):
+            result.append(self.__values[i]*a)
+        return Vector3(result)
     
     def magnitude(self): #returns magnitude
         return (self.__values[0]**2 + self.__values[1]**2 + self.__values[2]**2)**(0.5)
@@ -97,12 +102,26 @@ class Vector3(): #Define a class for 3d vectorss
                 self.val[1] / magnitude,
                 self.val[2] / magnitude])
 
+#rotates one vector around another using the Euler-Rodrigues formula
+def rotate(vector, axis, theta): #vector3,vector3,float (radians)
+    a = math.cos(theta/2)
+    omega = Vector3([
+        math.sin(theta/2) * axis.val[0],
+        math.sin(theta/2) * axis.val[1],
+        math.sin(theta/2) * axis.val[2]
+    ])
+    return Vector3.addVectors(
+        Vector3.addVectors(vector, Vector3.cross(omega,vector).multiply(2*a)),
+        Vector3.cross(omega, Vector3.cross(omega,vector)).multiply(2)
+    )
+
 class Camera:
     up = Vector3([0, 1, 0]) #global definition of up independent of the camera
     #note that with Vector3, we must define all our numbers to be an ARRAY (not list) where each number is a 64 bit float
 
     def __init__(self, position):
         self.__eulerAngles = Vector3([0,0,0]) #yaw, pitch, roll
+        self.__eulerAngularVelocity = Vector3([0,0,0]) #yaw, pitch, roll
         self.__position = Vector3(position)    #x, y ,z
         self.__velocity = Vector3([0, 0, 0])
         self.__acceleration = Vector3([0,0,0])
@@ -126,14 +145,80 @@ class Camera:
     def getDir (self):
         return self.__eulerAngles
 
-    def update(self, keys, mouse, deltaTime):
+    def update(self, keys, deltaTime):
         #Handles the lookat system and camera movement
 
         speed = 0.2
         direction = Vector3([0, 1, 0])
 
         #camera direction
-        self.__eulerAngles.addVal(np.array([mouse[0]/4, -mouse[1]/4, 0], dtype=np.float64)) #yaw, pitch, roll
+
+        if keys[K_w]: #yaw: rudder
+            if self.__eulerAngularVelocity.val[0] < 30:
+                self.__eulerAngularVelocity.addVal(np.array([0.005, 0, 0], dtype=np.float64))
+        elif keys[K_s]:
+            if self.__eulerAngularVelocity.val[0] > -30:
+                self.__eulerAngularVelocity.addVal(np.array([-0.005, 0, 0], dtype=np.float64))
+        else: #rudder is neutral
+            if abs(self.__eulerAngularVelocity.val[0]) < 0.1: #prevent jittery motion from overshooting equilibrium
+               self.__eulerAngularVelocity.setAt(0,0) 
+            elif self.__eulerAngularVelocity.val[0] < 0:
+                self.__eulerAngularVelocity.addVal(np.array([0.02, 0, 0], dtype=np.float64))
+            else:
+                self.__eulerAngularVelocity.addVal(np.array([-0.02, 0, 0], dtype=np.float64))
+
+        if keys[K_e]: #pitch: elevator
+            if self.__eulerAngularVelocity.val[1] < 30:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0.005, 0], dtype=np.float64))
+        elif keys[K_d]:
+            if self.__eulerAngularVelocity.val[1] > -30:
+                self.__eulerAngularVelocity.addVal(np.array([0, -0.005, 0], dtype=np.float64))
+        else: #elevator is neutral
+            if abs(self.__eulerAngularVelocity.val[1]) < 0.1:
+               self.__eulerAngularVelocity.setAt(1,0)
+            elif self.__eulerAngularVelocity.val[1] < 0:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0.02, 0], dtype=np.float64))
+            else:
+                self.__eulerAngularVelocity.addVal(np.array([0, -0.02, 0], dtype=np.float64))
+
+        # Ailerons: If only one active, rotate with half efficency. If both open in same direction, increase pitch slightly. If both active in opposite directions, rotate.
+        if (keys[K_q] and keys[K_r]): #both in same direction
+            if self.__eulerAngularVelocity.val[1] < 30:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0.01, 0], dtype=np.float64))
+        elif (keys[K_a] and  keys[K_f]):
+            if self.__eulerAngularVelocity.val[1] > -30:
+                self.__eulerAngularVelocity.addVal(np.array([0, -0.01, 0], dtype=np.float64))
+        else:
+            if keys[K_a]: #clockwise
+                if self.__eulerAngularVelocity.val[2] < 30:
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.0025], dtype=np.float64))
+            elif keys[K_q]: #counterclockwise
+                if self.__eulerAngularVelocity.val[2] > -30:
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.0025], dtype=np.float64))
+            else: #no roll acceleration
+                if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
+                    self.__eulerAngularVelocity.setAt(2,0)
+                elif self.__eulerAngularVelocity.val[2] < 0:
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.01], dtype=np.float64))
+                else:
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.01], dtype=np.float64))
+            
+            if keys[K_r]: #clockwise
+                if self.__eulerAngularVelocity.val[2] < 30:
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.0025], dtype=np.float64))
+            elif keys[K_f]: #counterclockwise
+                if self.__eulerAngularVelocity.val[2] > -30:
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.0025], dtype=np.float64))
+            else: #no roll acceleration
+                if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
+                    self.__eulerAngularVelocity.setAt(2,0)
+                elif self.__eulerAngularVelocity.val[2] < 0:
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.01], dtype=np.float64))
+                else:
+                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.01], dtype=np.float64))
+            
+
+        self.__eulerAngles.addVal(self.__eulerAngularVelocity.val) #yaw, pitch, roll
         if self.__eulerAngles.val[1] > 89: #keep pitch to 180 degree bounds
             self.__eulerAngles.setAt(1,89)
         if self.__eulerAngles.val[1] < -89:
@@ -146,6 +231,7 @@ class Camera:
         math.sin(math.radians(self.__eulerAngles.val[0])) * math.cos(math.radians(self.__eulerAngles.val[1]))])
         self.__front = direction.normalise() #get the front normalised vector
         self.__right = (Vector3.cross(Camera.up, self.__front)).normalise()
+        self.__right = rotate(self.__right, self.__front, math.radians(self.__eulerAngles.val[2])) #rotate right around front by roll
         self.__up = Vector3.cross(self.__front, self.__right)
 
         if keys[K_z]: #thrust
@@ -174,28 +260,6 @@ class Camera:
             newPos.append(self.__position.val[i]+self.__velocity.val[i]*0.001*deltaTime) #moves the plane, reduces scale by 10000x
         self.__position.setVal(newPos)
 
-        # Handle movement input
-        if keys[K_w]:
-            newPos = []
-            for i in range(3):
-                newPos.append(self.__position.val[i]+self.__front.val[i]*speed)
-            self.__position.setVal(newPos)
-        if keys[K_s]:
-            newPos = []
-            for i in range(3):
-                newPos.append(self.__position.val[i]-self.__front.val[i]*speed)
-            self.__position.setVal(newPos)
-        if keys[K_a]:
-            newPos = []
-            for i in range(3):
-                newPos.append(self.__position.val[i]+self.__right.val[i]*speed)
-            self.__position.setVal(newPos)
-        if keys[K_d]:
-            newPos = []
-            for i in range(3):
-                newPos.append(self.__position.val[i]-self.__right.val[i]*speed)
-            self.__position.setVal(newPos)
-
         glLoadIdentity() #as per explanation in https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
         gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val) #use stars to unpack
 
@@ -223,7 +287,7 @@ class Camera:
             self.__angleofattack = 0.25 * round(self.__angleofattack*4) #rounds to closest 0.25
             c_l, c_d = naca2412_airfoil[str(self.__angleofattack)] #get angle of attack coefficent values from database
 
-        lift = 0.5 * self.__velocity.magnitude()**2  * self.__wingArea * c_l * 1.2 #1.2 is the density of air
+        lift = 0.5 * Vector3.dot(self.__velocity,self.__front)**2  * self.__wingArea * c_l * 1.2 #1.2 is the density of air
         drag = 0.5 * self.__velocity.magnitude()**2  * self.__wingArea * c_d * 1.2
 
         if lift > 15000: #set upper cap for lift in case of bug
@@ -237,10 +301,6 @@ class Camera:
         vertical = (self.__thrust-drag) * abs(math.sin(self.__climbangle)) + lift * math.cos(self.__climbangle) - 9.81*self.__mass
         horizontal = (self.__thrust-drag) * math.cos(self.__climbangle) - lift * math.sin(self.__climbangle) 
 
-        text(0, 400, (1, 0, 0), "Vertical: "+str(vertical))
-        text(0, 360, (1, 0, 0), "Horizontal: "+str(horizontal))
-        text(0, 320, (1, 0, 0), "Lift: "+str(lift))
-        text(0, 280, (1, 0, 0), "Drag: "+str(drag))
 
         if self.__velocity.val[0] * self.__acceleration.val[0] > 0 and horizontal < 0: # drag would cause acceleration instead of deceleration if this is true.
             horizontal = 0
@@ -259,8 +319,6 @@ class Camera:
             ])
 
         return 1
-
-
 
 def checkforcollision(triangles, Camera):
     for triangle in triangles:
@@ -410,7 +468,7 @@ def main():
     
             if event.type == pg.KEYDOWN:
                 #regenerate the map for debugging purposes
-                if event.key == pg.K_r:
+                if event.key == pg.K_m:
                     mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
                     pg.time.wait(1)
 
@@ -430,7 +488,7 @@ def main():
         #update the camera with input from the user
         mouse = pg.mouse.get_rel()
         keys = pg.key.get_pressed()
-        mainCam.update(keys, mouse, (1/timeTaken))
+        mainCam.update(keys, (1/timeTaken))
         text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
         text(0, 750, (1, 0, 0), str(mainCam.getPos().val))
         text(0, 800, (1, 0, 0), str(mainCam.getDir().val))
