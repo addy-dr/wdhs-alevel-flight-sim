@@ -501,6 +501,3 @@ def main():
 
         pg.display.flip() #update window with active buffer contents
         pg.time.wait(10)
-        
-if __name__ == "__main__":
-    main()
