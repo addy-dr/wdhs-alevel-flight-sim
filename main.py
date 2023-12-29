@@ -17,6 +17,10 @@ from OpenGL.GLUT import *
 from numba import njit, float64
 from numba.experimental import jitclass
 
+#error and traceback handling
+from crashHandler import generateLog
+import traceback
+
 
 print("Packages successfully loaded.")
 #########
@@ -424,7 +428,7 @@ def text(x, y, color, text):
     glWindowPos2f(x, y)
     glutBitmapString(GLUT_BITMAP_HELVETICA_18, text.encode('ascii'))
 
-def main():
+def main(collectDataPermission):
 
     pg.init()
     pg.font.init()
@@ -462,42 +466,49 @@ def main():
     currTime=pg.time.get_ticks() # initialise program clock
     
     while True: #allows us to actually leave the program
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                pg.quit()
-                quit()
-    
-            if event.type == pg.KEYDOWN:
-                #regenerate the map for debugging purposes
-                if event.key == pg.K_m:
-                    mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
-                    pg.time.wait(1)
-
-                #dedicated crash button
-                if event.key == pg.K_c:
-                    raise Exception("developer forced crash")
-
-        #clear buffer
-        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
         try:
-            timeTaken=1000/((pg.time.get_ticks()-currTime))
-        except Exception: #divide by zero sometimes happens when a frame is rendered instantly
-            timeTaken = 1000 # small value of t
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    quit()
+        
+                if event.type == pg.KEYDOWN:
+                    #regenerate the map for debugging purposes
+                    if event.key == pg.K_m:
+                        mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
+                        pg.time.wait(1)
 
-        currTime=pg.time.get_ticks()
+                    #dedicated crash button
+                    if event.key == pg.K_c:
+                        raise Exception("developer forced crash")
 
-        #update the camera with input from the user
-        mouse = pg.mouse.get_rel()
-        keys = pg.key.get_pressed()
-        mainCam.update(keys, (1/timeTaken))
-        text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
-        text(0, 750, (1, 0, 0), str(mainCam.getPos().val))
-        text(0, 800, (1, 0, 0), str(mainCam.getDir().val))
+            #clear buffer
+            glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+            try:
+                timeTaken=1000/((pg.time.get_ticks()-currTime))
+            except Exception: #divide by zero sometimes happens when a frame is rendered instantly
+                timeTaken = 1000 # small value of t
 
-        #generate the visible terrain
-        verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
-        renderTriangle(verticelist)
-        checkforcollision(colCheck, mainCam)
+            currTime=pg.time.get_ticks()
 
-        pg.display.flip() #update window with active buffer contents
-        pg.time.wait(10)
+            #update the camera with input from the user
+            keys = pg.key.get_pressed()
+            mainCam.update(keys, (1/timeTaken))
+            text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
+            text(0, 750, (1, 0, 0), str(mainCam.getPos().val))
+            text(0, 800, (1, 0, 0), str(mainCam.getDir().val))
+
+            #generate the visible terrain
+            verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
+            renderTriangle(verticelist)
+            checkforcollision(colCheck, mainCam)
+
+            pg.display.flip() #update window with active buffer contents
+            pg.time.wait(10)
+        except Exception as err:
+            print("An error has ocurred.")
+            if collectDataPermission:
+                generateLog(err, traceback.format_exc(),
+                            [mainCam.getPos(), mainCam.getDir(), timeTaken, currTime, verticelist, colCheck])
+            pg.quit()
+            quit()

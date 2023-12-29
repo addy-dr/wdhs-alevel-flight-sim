@@ -33,26 +33,26 @@ class Button:
 class Checkbox(Button):
     def __init__(self, screen, x, y, w, h):
         Button.__init__(self, screen, x, y, w, h, "", pygame.font.SysFont('Corbel',60))
-        self.__flag = False
+        self.flag = False
 
     def render(self, mouse):
         if self._x <= mouse[0] <= self._x+self._w and self._y <= mouse[1] <= self._y+self._h:
             pygame.draw.rect(self._screen,self._light,[self._x,self._y,self._w,self._h])
             pygame.draw.rect(self._screen,(0,0,0),[self._x+10,self._y+10,self._w-20,self._h-20])
-            if self.__flag:
+            if self.flag:
                 pygame.draw.rect(self._screen,self._light,[self._x+20,self._y+20,self._w-40,self._h-40]) 
         else: 
             pygame.draw.rect(self._screen,self._dark,[self._x,self._y,self._w,self._h])
             pygame.draw.rect(self._screen,(0,0,0),[self._x+10,self._y+10,self._w-20,self._h-20])
-            if self.__flag:
+            if self.flag:
                 pygame.draw.rect(self._screen,self._dark,[self._x+20,self._y+20,self._w-40,self._h-40])
 
     def checkForClick(self,mouse):
         if self._x <= mouse[0] <= self._x+self._w and self._y <= mouse[1] <= self._y+self._h:
-            if self.__flag:
-                self.__flag = False
+            if self.flag:
+                self.flag = False
             else:
-                self.__flag = True
+                self.flag = True
             return True #success
         else:
             return False #failiure
@@ -95,7 +95,7 @@ def menu():
                 #this option starts the game
                 if buttonA.checkForClick(mouse): 
                     pygame.quit() 
-                    main.main()
+                    main.main(checkBox.flag)
 
                 #this option closes the launcher
                 if buttonB.checkForClick(mouse): 
