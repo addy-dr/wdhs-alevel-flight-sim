@@ -33,7 +33,7 @@ class Button:
 class Checkbox(Button):
     def __init__(self, screen, x, y, w, h):
         Button.__init__(self, screen, x, y, w, h, "", pygame.font.SysFont('Corbel',60))
-        self.flag = False
+        self.flag = False #determines whether the checkbox is on or off
 
     def render(self, mouse):
         if self._x <= mouse[0] <= self._x+self._w and self._y <= mouse[1] <= self._y+self._h:
