@@ -1,6 +1,7 @@
 import json
 import hashlib
 import datetime
+import socket
 
 def checksum(file): #used to generate checksums. Lets us know if code was tampered with.
     with open(file, "rb") as f: #rb = read in binary mode
