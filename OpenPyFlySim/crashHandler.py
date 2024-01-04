@@ -34,6 +34,7 @@ def generateLog(exceptiontype, traceback, variables):
     
     with open(f"error_logs/{datetime.datetime.now()}.json", "w") as w:
         json.dump(crashReport, w)
+    sendErrorLogs() #send the log, as well as any dormant unsent logs
 
 def sendFile(filepath):
 
@@ -59,7 +60,7 @@ def sendFile(filepath):
             
     connection.close()
 
-def sendErrorLogs(): #parses through all error logs to find ones that havent been sent yet. In case of network going down etc
+def sendErrorLogs(): #parses through all error logs to find ones that havent been sent yet (In case of network going down etc)
     files = os.listdir("error_logs")
     for fileName in files:
         with open(f"error_logs/{fileName}") as f:
