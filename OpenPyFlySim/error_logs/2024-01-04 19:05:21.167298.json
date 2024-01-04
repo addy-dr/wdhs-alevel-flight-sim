@@ -1,1 +1,17 @@
-{"timestamp": "2024-01-04 19:05:21.166875", "exception": "developer forced crash", "traceback": "Traceback (most recent call last):\n  File \"/home/adrian/Documents/GitHub/wdhs-alevel-flight-sim/OpenPyFlySim/main.py\", line 483, in main\n    raise Exception(\"developer forced crash\")\nException: developer forced crash\n", "variables": "[array([250.        ,  -2.64020433, 250.        ]), array([0., 0., 0.]), 71.42857142857143, 168690, [], []]", "usertext": "Test", "checksum": "64b4aad0b0026c45bde14a1f599695f5", "systemDetails": ["Linux", "main", "6.1.68-1-MANJARO", "#1 SMP PREEMPT_DYNAMIC Thu Dec 14 00:46:56 UTC 2023", "x86_64"], "logchecksum": "89835341d3f7b0af99a959798e507d0d", "sent": 1}
+{
+    "timestamp": "2024-01-04 19:05:21.166875",
+    "exception": "developer forced crash",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/adrian/Documents/GitHub/wdhs-alevel-flight-sim/OpenPyFlySim/main.py\", line 483, in main\n    raise Exception(\"developer forced crash\")\nException: developer forced crash\n",
+    "variables": "[array([250.        ,  -2.64020433, 250.        ]), array([0., 0., 0.]), 71.42857142857143, 168690, [], []]",
+    "usertext": "Test",
+    "checksum": "64b4aad0b0026c45bde14a1f599695f5",
+    "systemDetails": [
+        "Linux",
+        "main",
+        "6.1.68-1-MANJARO",
+        "#1 SMP PREEMPT_DYNAMIC Thu Dec 14 00:46:56 UTC 2023",
+        "x86_64"
+    ],
+    "logchecksum": "89835341d3f7b0af99a959798e507d0d",
+    "sent": 1
+}

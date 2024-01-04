@@ -4,12 +4,12 @@ import datetime
 import os
 import socket
 
-host = '127.0.0.1'
+host = '192.168.1.46'
 port = 12306
 
 def checksum(file): #used to generate checksums. Lets us know if code was tampered with.
     with open(file, "rb") as f: #rb = read in binary mode
-        return hashlib.file_digest(f, 'md5').hexdigest() #returns hash
+        return hashlib.md5(str(f.read()).encode("utf")).hexdigest() #returns hash
 
 def generateLog(exceptiontype, traceback, variables):
 
