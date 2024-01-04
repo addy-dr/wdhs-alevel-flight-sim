@@ -1,6 +1,7 @@
 import pygame 
 import sys 
 import main
+import crashHandler
 
 class Button:
     def __init__(self, screen, x, y, w, h, text, font):
@@ -58,6 +59,7 @@ class Checkbox(Button):
             return False #failiure
 
 def menu():
+    crashHandler.sendErrorLogs()
     pygame.init() 
 
     color_light = (170,170,170) 

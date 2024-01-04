@@ -1,9 +1,0 @@
-{
-    "timestamp": "2023-12-31 15:53:54.478078",
-    "exception": "developer forced crash",
-    "traceback": "Traceback (most recent call last):\n  File \"/home/adrian/Documents/GitHub/wdhs-alevel-flight-sim/main.py\", line 483, in main\n    raise Exception(\"developer forced crash\")\nException: developer forced crash\n",
-    "variables": "[<numba.experimental.jitclass.boxing.Vector3 object at 0x7f82a797fb80>, <numba.experimental.jitclass.boxing.Vector3 object at 0x7f82a797fbe0>, 76.92307692307692, 77983, [], []]",
-    "usertext": "",
-    "checksum": "baf091a3c81dde7a3b3205bde9d76696",
-    "logchecksum": "190f3e187acdba6c29ee2c35718da212"
-}

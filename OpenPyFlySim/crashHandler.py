@@ -4,6 +4,9 @@ import datetime
 import os
 import socket
 
+host = '127.0.0.1'
+port = 12306
+
 def checksum(file): #used to generate checksums. Lets us know if code was tampered with.
     with open(file, "rb") as f: #rb = read in binary mode
         return hashlib.file_digest(f, 'md5').hexdigest() #returns hash
@@ -17,16 +20,49 @@ def generateLog(exceptiontype, traceback, variables):
         systemDetails = '' # might not work on windows based on https://stackoverflow.com/questions/62798371/os-uname-function-not-working-in-windows
     
     crashReport = {
-        "timestamp": datetime.datetime.now(),
+        "timestamp": str(datetime.datetime.now()),
         "exception": str(exceptiontype),
         "traceback": str(traceback),
         "variables": str(variables),
         "usertext": userText,
         "checksum": checksum("main.py"),
         "systemDetails": systemDetails,
-        "logchecksum": ""
+        "logchecksum": "",
+        "sent": 0 #determines whether the log has been sent to the developers
     }
     crashReport["logchecksum"] = hashlib.md5(str(crashReport).encode("utf")).hexdigest() #generate log's checksum
     
     with open(f"error_logs/{datetime.datetime.now()}.json", "w") as w:
         json.dump(crashReport, w)
+
+def sendFile(filepath):
+
+    connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    connection.connect((host, port))
+
+    #first, send a rts message
+    connection.sendall(b"rts")
+    response = connection.recv(1024).decode()
+    if response != "cts":
+        print("an error has occured in the network connection.")
+    else:
+        # Send the JSON file
+        with open(filepath, 'rb') as f:
+            data = f.read()
+            connection.sendall(data)
+            log = json.loads(data.decode())
+        response = connection.recv(1024).decode()
+        if response == "accepted":
+            log["sent"] = 1 #marks as sent
+            with open(filepath, 'w') as f: #rewrites the file with the new data
+                json.dump(log, f)
+            
+    connection.close()
+
+def sendErrorLogs(): #parses through all error logs to find ones that havent been sent yet. In case of network going down etc
+    files = os.listdir("error_logs")
+    for fileName in files:
+        with open(f"error_logs/{fileName}") as f:
+            contents = json.loads(f.read())
+            if contents["sent"] == 0: #indicates that the JSON file has not been sent yet
+                sendFile(f"error_logs/{fileName}")
