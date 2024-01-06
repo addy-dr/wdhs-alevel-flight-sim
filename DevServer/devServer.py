@@ -2,7 +2,7 @@ import socket
 import json
 
 def main():
-    host = '127.0.0.1'
+    host = '0.0.0.0'
     port = 12306 #can be any number not in use
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #use ipv4 and tcp

@@ -35,6 +35,7 @@ with open("NACA2412.json", "r+") as f: #produced using the Xfoil program from .d
 ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
 RENDER_DISTANCE = 30
+TEXTURE_COUNTER = 1
 
 @jitclass([("__values", float64[::1])]) #define __values to be a list of contiguous floats
 class Vector3(): #Define a class for 3d vectorss
@@ -368,6 +369,51 @@ def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex
         triThreePoints(*vertices.pop()) #doing this allows up to parallelise since all threads use one stack
     glEnd()
 
+def load_texture(image_path):
+    img = pg.image.load(image_path)
+    texture = pg.image.tostring(img, 'RGBA', True)
+
+    texture_id = glGenTextures(TEXTURE_COUNTER) #assign ID
+    TEXTURE_COUNTER+=1
+    glBindTexture(GL_TEXTURE_2D, texture)
+
+    #Linear intepolation configuration
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture)
+
+    return texture
+
+def draw_graphic(texture_id, x=1500, y=100, w=240, h=185):
+    glEnable(GL_TEXTURE_2D)
+    glBindTexture(GL_TEXTURE_2D, texture_id)
+
+    glBegin(GL_QUADS)
+    glTexCoord2f(0, 0)
+    glVertex2f(x, y)
+    glTexCoord2f(1, 0)
+    glVertex2f(x + w, y)
+    glTexCoord2f(1, 1)
+    glVertex2f(x + w, y + h)
+    glTexCoord2f(0, 1)
+    glVertex2f(x, y + h)
+    glEnd()
+
+    glDisable(GL_TEXTURE_2D)
+
+def initTextures():
+    #load in images
+    imgAircraft = pg.image.load('planegraphic.png')
+    imgrightrudderdown = pg.image.load('rightrudderdown.png')
+    imgrightrudderup = pg.image.load('rightrudderup.png')
+    imgleftrudderdown = pg.image.load('leftrudderdown.png')
+    imgleftrudderup = pg.image.load('leftrudderup.png')
+    imgrudderleft = pg.image.load('rudderleft.png')
+    imgrudderright = pg.image.load('rudderright.png')
+    imgelevatorup = pg.image.load('elevatorup.png')
+    imgelevatordown = pg.image.load('elevatordown.png')
+    
+
 #we need to import all of these variables because numba won't know about them
 @njit
 def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
@@ -461,6 +507,17 @@ def main(collectDataPermission):
     glShadeModel(GL_SMOOTH)
     glDepthRange(0.0,1.0)
 
+    #define textures
+    planeHUD = load_texture("planeHUD.png")
+    aileron_rd = load_texture("railerondown.png")
+    aileron_ld = load_texture("lailerondown.png")
+    aileron_ru = load_texture("raileronup.png")
+    aileron_lu = load_texture("laileronup.png")
+    elevator_d = load_texture("elevatordown.png")
+    elevator_u = load_texture("elevatorup.png")
+    rudder_l = load_texture("rudderleft.png")
+    rudder_r = load_texture("rudderright.png")
+
     ### RUN PROGRAM ###
 
     currTime=pg.time.get_ticks() # initialise program clock
@@ -497,6 +554,10 @@ def main(collectDataPermission):
             text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
             text(0, 750, (1, 0, 0), str(mainCam.getPos().val))
             text(0, 800, (1, 0, 0), str(mainCam.getDir().val))
+
+            #####xxxxxxx
+
+            text(1500, 100, (1, 0, 0), str(mainCam.getDir().val))
 
             #generate the visible terrain
             verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
