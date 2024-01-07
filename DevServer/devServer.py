@@ -3,7 +3,7 @@ import json
 
 def main():
     host = '0.0.0.0'
-    port = 12306 #can be any number not in use
+    port = 12306 #can be any number not in use. Make sure to update datafile.txt though
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #use ipv4 and tcp
     server_socket.bind((host, port))

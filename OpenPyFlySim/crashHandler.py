@@ -5,8 +5,8 @@ import os
 import socket
 import main
 
-host = '192.168.1.46'
-port = 12306
+host = checkon = main.getDatafileData("serverIP")
+port = checkon = main.getDatafileData("host")
 
 def checksum(file): #used to generate checksums. Lets us know if code was tampered with.
     with open(file, "rb") as f: #rb = read in binary mode
