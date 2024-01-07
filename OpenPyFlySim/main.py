@@ -35,7 +35,6 @@ with open("NACA2412.json", "r+") as f: #produced using the Xfoil program from .d
 ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
 RENDER_DISTANCE = 30
-TEXTURE_COUNTER = 1
 
 @jitclass([("__values", float64[::1])]) #define __values to be a list of contiguous floats
 class Vector3(): #Define a class for 3d vectorss
@@ -311,7 +310,7 @@ class Camera:
         if self.__velocity.val[0] * self.__acceleration.val[0] > 0 and horizontal < 0: # drag would cause acceleration instead of deceleration if this is true.
             horizontal = 0
 
-        if self.__thrust < drag: #act against velocity to slow down plane. If removed, causes infinite acceleration in the opposite way the plane is facing when 0 thrust
+        if self.__thrust < drag: #act against velocity to slow down plane. If removed, causes infinite acceleration due to "drag" in the opposite way the plane is facing when 0 thrust
             self.__acceleration = Vector3([ # x y z
                 (horizontal*deltaTime*self.__velocity.normalise().val[0])/self.__mass,
                 (vertical*deltaTime)/self.__mass,
@@ -325,6 +324,41 @@ class Camera:
             ])
 
         return 1
+    
+def getDatafileData(variable):
+    "retrieves data from datafile.txt"
+    with open("datafile.txt", "r") as f:
+        lines = f.read().split("\n")
+    
+    for string in lines:
+        try:
+            start = string.index(variable) + len(variable) + 1 #plus one because of equals sign
+            return string[start:]
+        except ValueError:
+            pass
+    return ""
+
+def writeDatafileData(variable, content):
+    "writes data to datafile.txt"
+    with open("datafile.txt", "r") as f:
+        lines = f.read().split("\n")
+    replacedline = 0
+    for string in lines:
+        try:
+            start = string.index(variable) + len(variable) + 1
+            newline = string[:start]+str(content) #replace the old content with the new parameter
+            replacedline = lines.index(string)
+        except ValueError:
+            pass
+    newfile = ""
+    for i in range(len(lines)):
+        if i == replacedline:
+            newfile+=(newline+"\n") #replace previous item on this line with the new modified one
+        else:
+            newfile+=(lines[i]+"\n")
+
+    with open("datafile.txt", "w") as f:
+        f.write(newfile)
 
 def checkforcollision(triangles, Camera):
     for triangle in triangles:
@@ -344,14 +378,22 @@ def mapGen(heightmap, colourmap, watermask):
         for xcord in range(XLENGTH):
             if watermask[zcord][xcord][0] != 0: # => water tile as defined in the mask
                 vertList.append((xcord,0.3,zcord)) #so render as an ocean tile
-                coloursList.append((0.85+uniform(-0.05,0.05),0.95+uniform(-0.05,0.05),0.85+uniform(-0.05,0.05))) #generic lowlying land colour. Already check in map generating function if a tile is at sea level, so this is simply the colour for terrain sloping into sea level.
-                coloursList.append((0.85+uniform(-0.05,0.05),0.95+uniform(-0.05,0.05),0.85+uniform(-0.05,0.05))) #We do this twice since each "pixel" corresponds to two polygons.
+                coloursList.append((0.85+uniform(-0.05,0.05),
+                                    0.95+uniform(-0.05,0.05),
+                                    0.85+uniform(-0.05,0.05))) #generic lowlying land colour. Already check in map generating function if a tile is at sea level, so this is simply the colour for terrain sloping into sea level.
+                coloursList.append((0.85+uniform(-0.05,0.05),
+                                    0.95+uniform(-0.05,0.05),
+                                    0.85+uniform(-0.05,0.05))) #We do this twice since each "pixel" corresponds to two polygons.
             else:
                 vertList.append((xcord,heightmap[zcord][xcord]/75,zcord))
-                pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05)) #Convert from 0-255 RGB format to 0-1 RGB format. Random number adds colour variation for aesthetic purposes
+                pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05),
+                               (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05),
+                               (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05)) #Convert from 0-255 RGB format to 0-1 RGB format. Random number adds colour variation for aesthetic purposes
                 coloursList.append(pixelColour) #define RGB values for all corresponding vertices
                 #We do this twice since each "pixel" corresponds to two polygons. We can afford to take more processing while loading the map at this stage.
-                pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05), (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05))
+                pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05),
+                               (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05),
+                               (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05))
                 coloursList.append(pixelColour)
     return np.array(vertList), np.array(coloursList)
 
@@ -365,24 +407,25 @@ def triThreePoints(p1,p2,p3,c):
 def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex 3, colour
     glBegin(GL_TRIANGLES)
     while vertices != []:
-        #Implement parallelisation here
-        triThreePoints(*vertices.pop()) #doing this allows up to parallelise since all threads use one stack
+        triThreePoints(*vertices.pop())
     glEnd()
 
 def load_texture(image_path):
     img = pg.image.load(image_path)
     texture = pg.image.tostring(img, 'RGBA', True)
+    w, h = img.get_size()
 
-    texture_id = glGenTextures(TEXTURE_COUNTER) #assign ID
-    TEXTURE_COUNTER+=1
-    glBindTexture(GL_TEXTURE_2D, texture)
+    texture_id = glGenTextures(1) #assigns an ID
+    glBindTexture(GL_TEXTURE_2D, texture_id)
 
     #Linear intepolation configuration
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture)
 
-    return texture
+    #define the actual texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture)
+
+    return texture_id
 
 def draw_graphic(texture_id, x=1500, y=100, w=240, h=185):
     glEnable(GL_TEXTURE_2D)
@@ -400,19 +443,6 @@ def draw_graphic(texture_id, x=1500, y=100, w=240, h=185):
     glEnd()
 
     glDisable(GL_TEXTURE_2D)
-
-def initTextures():
-    #load in images
-    imgAircraft = pg.image.load('planegraphic.png')
-    imgrightrudderdown = pg.image.load('rightrudderdown.png')
-    imgrightrudderup = pg.image.load('rightrudderup.png')
-    imgleftrudderdown = pg.image.load('leftrudderdown.png')
-    imgleftrudderup = pg.image.load('leftrudderup.png')
-    imgrudderleft = pg.image.load('rudderleft.png')
-    imgrudderright = pg.image.load('rudderright.png')
-    imgelevatorup = pg.image.load('elevatorup.png')
-    imgelevatordown = pg.image.load('elevatordown.png')
-    
 
 #we need to import all of these variables because numba won't know about them
 @njit
@@ -555,7 +585,7 @@ def main(collectDataPermission):
             text(0, 750, (1, 0, 0), str(mainCam.getPos().val))
             text(0, 800, (1, 0, 0), str(mainCam.getDir().val))
 
-            #####xxxxxxx
+            draw_graphic(planeHUD)
 
             text(1500, 100, (1, 0, 0), str(mainCam.getDir().val))
 

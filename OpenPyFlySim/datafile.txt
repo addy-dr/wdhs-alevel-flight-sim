@@ -1,0 +1,11 @@
+// NOTE: In a proper program, this would be a .env file, which would be hidden from github and accessed via the dotenv module in python
+// In this case, as to show the entire program, I am making this file easily accessible
+
+serverIP=192.168.1.46
+host=12306
+datacheckboxon=1
+
+
+
+
+

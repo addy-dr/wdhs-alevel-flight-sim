@@ -56,10 +56,14 @@ class Checkbox(Button):
                 self.flag = True
             return True #success
         else:
-            return False #failiure
+            return False #failiures
+
 
 def menu():
-    crashHandler.sendErrorLogs()
+    try:
+        crashHandler.sendErrorLogs()
+    except:
+        print("Servers offline.")
     pygame.init() 
 
     color_light = (170,170,170) 
@@ -83,6 +87,11 @@ def menu():
     buttonB = Button(screen, (width/2)+100, (height/2)+100, 300, 150, "QUIT", font)
     checkBox = Checkbox(screen, (width/2)+100, (height/2)+300, 100, 100)
 
+    checkon = main.getDatafileData("datacheckboxon")
+    print(checkon)
+    if checkon == "1":
+        checkBox.flag = True
+
     i = pygame.image.load("colourmap.bmp").convert()
     
     while True:     
@@ -96,11 +105,21 @@ def menu():
                 
                 #this option starts the game
                 if buttonA.checkForClick(mouse): 
-                    pygame.quit() 
+                    pygame.quit()
+                    if checkBox.flag: #save state of checkbox
+                        binary_bool = 1
+                    else:
+                        binary_bool = 0
+                    main.writeDatafileData("datacheckboxon", binary_bool)
                     main.main(checkBox.flag)
 
                 #this option closes the launcher
                 if buttonB.checkForClick(mouse): 
+                    if checkBox.flag: #save state of checkbox
+                        binary_bool = 1
+                    else:
+                        binary_bool = 0
+                    main.writeDatafileData("datacheckboxon", binary_bool)
                     pygame.quit()
 
                 checkBox.checkForClick(mouse) #no immediate effect

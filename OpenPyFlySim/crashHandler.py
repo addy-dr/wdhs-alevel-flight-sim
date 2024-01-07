@@ -3,6 +3,7 @@ import hashlib
 import datetime
 import os
 import socket
+import main
 
 host = '192.168.1.46'
 port = 12306
@@ -34,7 +35,11 @@ def generateLog(exceptiontype, traceback, variables):
     
     with open(f"error_logs/{datetime.datetime.now()}.json", "w") as w:
         json.dump(crashReport, w)
-    sendErrorLogs() #send the log, as well as any dormant unsent logs
+
+    try:
+        sendErrorLogs() #send the log, as well as any dormant unsent logs
+    except:
+        print("Server offline")
 
 def sendFile(filepath):
 
