@@ -3,10 +3,10 @@ import hashlib
 import datetime
 import os
 import socket
-import main
+from maths_module import getDatafileData
 
-host = checkon = main.getDatafileData("serverIP")
-port = checkon = main.getDatafileData("host")
+host = getDatafileData("serverIP")
+port = getDatafileData("host")
 
 def checksum(file): #used to generate checksums. Lets us know if code was tampered with.
     with open(file, "rb") as f: #rb = read in binary mode
@@ -43,7 +43,7 @@ def generateLog(exceptiontype, traceback, variables):
 
 def sendFile(filepath):
 
-    connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #connect to ipv4 and tcp
     connection.connect((host, port))
 
     #first, send a rts message
@@ -52,7 +52,7 @@ def sendFile(filepath):
     if response != "cts":
         print("an error has occured in the network connection.")
     else:
-        # Send the JSON file
+        #Send the JSON file
         with open(filepath, 'rb') as f:
             data = f.read()
             connection.sendall(data)

@@ -1,7 +1,8 @@
 import pygame 
 import sys 
 import main
-import crashHandler
+from maths_module import getDatafileData, writeDatafileData
+import crash_handler
 
 class Button:
     def __init__(self, screen, x, y, w, h, text, font):
@@ -15,7 +16,7 @@ class Button:
         self._dark = (100,100,100)
 
         self._screen = screen # pointer to the screen
-        self._text = font.render(text , True , (255,255,255) )
+        self._text = font.render(text , True , (255,255,255))
 
     def render(self, mouse):
         if self._x <= mouse[0] <= self._x+self._w and self._y <= mouse[1] <= self._y+self._h:
@@ -61,7 +62,7 @@ class Checkbox(Button):
 
 def menu():
     try:
-        crashHandler.sendErrorLogs()
+        crash_handler.sendErrorLogs()
     except:
         print("Servers offline.")
     pygame.init() 
@@ -87,7 +88,7 @@ def menu():
     buttonB = Button(screen, (width/2)+100, (height/2)+100, 300, 150, "QUIT", font)
     checkBox = Checkbox(screen, (width/2)+100, (height/2)+300, 100, 100)
 
-    checkon = main.getDatafileData("datacheckboxon")
+    checkon = getDatafileData("datacheckboxon")
     print(checkon)
     if checkon == "1":
         checkBox.flag = True
@@ -110,7 +111,7 @@ def menu():
                         binary_bool = 1
                     else:
                         binary_bool = 0
-                    main.writeDatafileData("datacheckboxon", binary_bool)
+                    writeDatafileData("datacheckboxon", binary_bool)
                     main.main(checkBox.flag)
 
                 #this option closes the launcher
@@ -119,7 +120,7 @@ def menu():
                         binary_bool = 1
                     else:
                         binary_bool = 0
-                    main.writeDatafileData("datacheckboxon", binary_bool)
+                    writeDatafileData("datacheckboxon", binary_bool)
                     pygame.quit()
 
                 checkBox.checkForClick(mouse) #no immediate effect

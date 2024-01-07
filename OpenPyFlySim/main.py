@@ -14,11 +14,12 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
 #JIT (numba)
-from numba import njit, float64
-from numba.experimental import jitclass
+from numba import njit
+
+from maths_module import Vector3, rotate
 
 #error and traceback handling
-from crashHandler import generateLog
+from crash_handler import generateLog
 import traceback
 
 
@@ -35,89 +36,6 @@ with open("NACA2412.json", "r+") as f: #produced using the Xfoil program from .d
 ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
 RENDER_DISTANCE = 30
-
-@jitclass([("__values", float64[::1])]) #define __values to be a list of contiguous floats
-class Vector3(): #Define a class for 3d vectorss
-    #class methods don't work with JIT
-    @staticmethod #static method to add two vectors and return a third one
-    def addVectors(vectorA, vectorB):
-        result = []
-        for i in range(3):
-            result.append(vectorA.val[i]+vectorB.val[i])
-        return Vector3(result) #returns a vector with the summed values as its instantiation inputs
-    
-    @staticmethod #static method to sub two vectors and return a third one
-    def subtractVectors(vectorA, vectorB):
-        result = []
-        for i in range(3):
-            result.append(vectorA.val[i]-vectorB.val[i])
-        return Vector3(result) #returns a vector with the summed values as its instantiation inputs
-    
-    @staticmethod #static method to dot product two vectors
-    def dot(vectorA, vectorB):
-        result = 0
-        for i in range(3):
-            result += (vectorA.val[i] * vectorB.val[i])
-        return result
-    
-    @staticmethod #static method to cross product two vectors
-    def cross(vectorA, vectorB):
-        result = []
-        for t in [(1,2),(2,0),(0,1)]: #based on mathematical definition of cross product
-            result.append(vectorA.val[t[0]]*vectorB.val[t[1]] - vectorA.val[t[1]]*vectorB.val[t[0]])
-        return Vector3(result) #returns a vector with the cross product as its instantiation inputs
-    
-    def __init__(self, arg):
-        #Note: In order to work with the vector3 function, we must pass in a numpy array with a defined data type of float64 for all values.
-        self.__values = np.array(arg, dtype=np.float64)
-
-    @property #decorator marks this as being a property. This is just a getter function so this is appropriate
-    def val(self): #return value
-        return self.__values
-    
-    #setter function to change the value of the vector
-    def setVal(self, a):
-        self.__values = np.array(a, dtype=np.float64)
-
-    #add values to existing vals
-    def addVal(self, a):
-        for i in range(3):
-            self.__values[i] += a[i]
-
-    def multiply(self, a):
-        result = []
-        for i in range(3):
-            result.append(self.__values[i]*a)
-        return Vector3(result)
-    
-    def magnitude(self): #returns magnitude
-        return (self.__values[0]**2 + self.__values[1]**2 + self.__values[2]**2)**(0.5)
-    
-    def setAt(self, n, val): #sets the value of the varable at n to val
-        self.__values[n] = val
-    
-    def normalise(self): #normalises vectors. Since we can't import our zero vector into here since it uses a numpy definition, we need to set a fallback whenever we call this function instead.
-        magnitude = self.magnitude()
-        if magnitude == 0:
-            return Vector3([0,0,0])
-        else:
-            return Vector3([
-                self.val[0] / magnitude,
-                self.val[1] / magnitude,
-                self.val[2] / magnitude])
-
-#rotates one vector around another using the Euler-Rodrigues formula
-def rotate(vector, axis, theta): #vector3,vector3,float (radians)
-    a = math.cos(theta/2)
-    omega = Vector3([
-        math.sin(theta/2) * axis.val[0],
-        math.sin(theta/2) * axis.val[1],
-        math.sin(theta/2) * axis.val[2]
-    ])
-    return Vector3.addVectors(
-        Vector3.addVectors(vector, Vector3.cross(omega,vector).multiply(2*a)),
-        Vector3.cross(omega, Vector3.cross(omega,vector)).multiply(2)
-    )
 
 class Camera:
     up = Vector3([0, 1, 0]) #global definition of up independent of the camera
@@ -269,7 +187,7 @@ class Camera:
         gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val) #use stars to unpack
 
         text(0, 640, (1, 0, 0), "Thrust: "+str(self.__thrust))
-        text(0, 600, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(self.__mass*9.81)))
+        text(0, 600, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(9.81)))
         text(0, 560, (1, 0, 0), "Velocity: "+str(self.__velocity.val))
         text(0, 520, (1, 0, 0), "Acceleration: "+str(self.__acceleration.val))
         text(0, 480, (1, 0, 0), "Front: "+str(self.__front.val))
@@ -325,41 +243,6 @@ class Camera:
 
         return 1
     
-def getDatafileData(variable):
-    "retrieves data from datafile.txt"
-    with open("datafile.txt", "r") as f:
-        lines = f.read().split("\n")
-    
-    for string in lines:
-        try:
-            start = string.index(variable) + len(variable) + 1 #plus one because of equals sign
-            return string[start:]
-        except ValueError:
-            pass
-    return ""
-
-def writeDatafileData(variable, content):
-    "writes data to datafile.txt"
-    with open("datafile.txt", "r") as f:
-        lines = f.read().split("\n")
-    replacedline = 0
-    for string in lines:
-        try:
-            start = string.index(variable) + len(variable) + 1
-            newline = string[:start]+str(content) #replace the old content with the new parameter
-            replacedline = lines.index(string)
-        except ValueError:
-            pass
-    newfile = ""
-    for i in range(len(lines)):
-        if i == replacedline:
-            newfile+=(newline+"\n") #replace previous item on this line with the new modified one
-        else:
-            newfile+=(lines[i]+"\n")
-
-    with open("datafile.txt", "w") as f:
-        f.write(newfile)
-
 def checkforcollision(triangles, Camera):
     for triangle in triangles:
         p1 = Vector3(list(triangle[0]))
@@ -411,11 +294,12 @@ def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex
     glEnd()
 
 def load_texture(image_path):
-    img = pg.image.load(image_path)
-    texture = pg.image.tostring(img, 'RGBA', True)
-    w, h = img.get_size()
+    img = Image.open(image_path)
+    texture = np.array(list(img.getdata()))
+    w, h = img.size
 
     texture_id = glGenTextures(1) #assigns an ID
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
     glBindTexture(GL_TEXTURE_2D, texture_id)
 
     #Linear intepolation configuration
@@ -424,21 +308,22 @@ def load_texture(image_path):
 
     #define the actual texture
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture)
+    img.close()
 
     return texture_id
 
-def draw_graphic(texture_id, x=1500, y=100, w=240, h=185):
+def draw_graphic(texture_id, x=1500, y=800, w=240, h=185):
     glEnable(GL_TEXTURE_2D)
     glBindTexture(GL_TEXTURE_2D, texture_id)
 
     glBegin(GL_QUADS)
-    glTexCoord2f(0, 0)
-    glVertex2f(x, y)
-    glTexCoord2f(1, 0)
-    glVertex2f(x + w, y)
     glTexCoord2f(1, 1)
-    glVertex2f(x + w, y + h)
+    glVertex2f(x, y)
     glTexCoord2f(0, 1)
+    glVertex2f(x + w, y)
+    glTexCoord2f(0, 0)
+    glVertex2f(x + w, y + h)
+    glTexCoord2f(1, 0)
     glVertex2f(x, y + h)
     glEnd()
 
@@ -532,6 +417,8 @@ def main(collectDataPermission):
     glDepthFunc(GL_LESS)
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_CULL_FACE)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glCullFace(GL_BACK)
     glFrontFace(GL_CCW)
     glShadeModel(GL_SMOOTH)
@@ -539,14 +426,14 @@ def main(collectDataPermission):
 
     #define textures
     planeHUD = load_texture("planeHUD.png")
-    aileron_rd = load_texture("railerondown.png")
+    """aileron_rd = load_texture("railerondown.png")
     aileron_ld = load_texture("lailerondown.png")
     aileron_ru = load_texture("raileronup.png")
     aileron_lu = load_texture("laileronup.png")
     elevator_d = load_texture("elevatordown.png")
     elevator_u = load_texture("elevatorup.png")
     rudder_l = load_texture("rudderleft.png")
-    rudder_r = load_texture("rudderright.png")
+    rudder_r = load_texture("rudderright.png")"""
 
     ### RUN PROGRAM ###
 
@@ -571,6 +458,7 @@ def main(collectDataPermission):
 
             #clear buffer
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+
             try:
                 timeTaken=1000/((pg.time.get_ticks()-currTime))
             except Exception: #divide by zero sometimes happens when a frame is rendered instantly
@@ -585,17 +473,29 @@ def main(collectDataPermission):
             text(0, 750, (1, 0, 0), str(mainCam.getPos().val))
             text(0, 800, (1, 0, 0), str(mainCam.getDir().val))
 
-            draw_graphic(planeHUD)
+            text(0, 100, (1, 0, 0), str(mainCam.getDir().val))
 
-            text(1500, 100, (1, 0, 0), str(mainCam.getDir().val))
+            glMatrixMode (GL_PROJECTION) #load perspective mode for 3d rendering
+            glLoadIdentity()
+            gluPerspective(60, (display[0]/display[1]), 0.1, 50.0) #fov, aspect, zNear, zFar
+            glMatrixMode(GL_MODELVIEW)
 
             #generate the visible terrain
             verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
             renderTriangle(verticelist)
             checkforcollision(colCheck, mainCam)
 
+            glMatrixMode (GL_PROJECTION) #load orthographic mode for 2d rendering
+            glLoadIdentity()
+            gluOrtho2D(0, display[0], 0, display[1]) #dimensions of the screen
+            glMatrixMode(GL_MODELVIEW)
+            glLoadIdentity() #clear identity matrix
+
+            draw_graphic(planeHUD)
+
             pg.display.flip() #update window with active buffer contents
-            pg.time.wait(10)
+            pg.time.wait(10) #prevents frames from being rendered instantly
+
         except Exception as err:
             print("An error has ocurred.")
             if collectDataPermission:
