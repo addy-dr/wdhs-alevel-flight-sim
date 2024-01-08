@@ -78,10 +78,13 @@ class Camera:
         if keys[K_w]: #yaw: rudder
             if self.__eulerAngularVelocity.val[0] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0.005, 0, 0], dtype=np.float64))
+            text(1650, 1020, (1, 0, 0), "RUDDER: LEFT")
         elif keys[K_s]:
             if self.__eulerAngularVelocity.val[0] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([-0.005, 0, 0], dtype=np.float64))
+            text(1650, 1020, (1, 0, 0), "RUDDER: RIGHT")
         else: #rudder is neutral
+            text(1650, 1020, (1, 0, 0), "RUDDER: NEUTRAL")
             if abs(self.__eulerAngularVelocity.val[0]) < 0.1: #prevent jittery motion from overshooting equilibrium
                self.__eulerAngularVelocity.setAt(0,0) 
             elif self.__eulerAngularVelocity.val[0] < 0:
@@ -93,52 +96,68 @@ class Camera:
         if keys[K_e]: #pitch: elevator
             if self.__eulerAngularVelocity.val[1] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0.005, 0], dtype=np.float64))
+            text(1650, 990, (1, 0, 0), "ELEVATOR: UP")
         elif keys[K_d]:
             if self.__eulerAngularVelocity.val[1] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([0, -0.005, 0], dtype=np.float64))
+            text(1650, 990, (1, 0, 0), "ELEVATOR: DOWN")
         elif (keys[K_q] and keys[K_r]): #ailerons both in same direction
+            text(1650, 990, (1, 0, 0), "ELEVATOR: NEUTRAL")
+            text(1650, 960, (1, 0, 0), "LEFT AILERON: UP")
+            text(1650, 930, (1, 0, 0), "RIGHT AILERON: UP")
             if self.__eulerAngularVelocity.val[1] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0.0025, 0], dtype=np.float64))
         elif (keys[K_a] and  keys[K_f]):
+            text(1650, 990, (1, 0, 0), "ELEVATOR: NEUTRAL")
+            text(1650, 960, (1, 0, 0), "LEFT AILERON: DOWN")
+            text(1650, 930, (1, 0, 0), "RIGHT AILERON: DOWN")
             if self.__eulerAngularVelocity.val[1] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([0, -0.0025, 0], dtype=np.float64))
         else: #elevator is neutral
-            if abs(self.__eulerAngularVelocity.val[1]) < 0.1:
-               self.__eulerAngularVelocity.setAt(1,0)
+            text(1650, 990, (1, 0, 0), "ELEVATOR: NEUTRAL")
+        
+            if abs(self.__eulerAngularVelocity.val[1]) < 0.1:   #prevents de-acceleration of pitch from overshooting itself
+                self.__eulerAngularVelocity.setAt(1,0)
             elif self.__eulerAngularVelocity.val[1] < 0:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0.02, 0], dtype=np.float64))
             else:
                 self.__eulerAngularVelocity.addVal(np.array([0, -0.02, 0], dtype=np.float64))
-            
-            # Ailerons: If only one active, rotate with half efficency. If both open in same direction, increase pitch slightly. If both active in opposite directions, rotate.
-            
-            if keys[K_a]: #clockwise
-                if self.__eulerAngularVelocity.val[2] < 30:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.0025], dtype=np.float64))
-            elif keys[K_q]: #counterclockwise
-                if self.__eulerAngularVelocity.val[2] > -30:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.0025], dtype=np.float64))
-            else: #no roll acceleration
-                if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
-                    self.__eulerAngularVelocity.setAt(2,0)
-                elif self.__eulerAngularVelocity.val[2] < 0:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.002], dtype=np.float64))
-                else:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.002], dtype=np.float64))
-            
-            if keys[K_r]: #clockwise
-                if self.__eulerAngularVelocity.val[2] < 30:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.0025], dtype=np.float64))
-            elif keys[K_f]: #counterclockwise
-                if self.__eulerAngularVelocity.val[2] > -30:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.0025], dtype=np.float64))
-            else: #no roll acceleration
-                if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
-                    self.__eulerAngularVelocity.setAt(2,0)
-                elif self.__eulerAngularVelocity.val[2] < 0:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.002], dtype=np.float64))
-                else:
-                    self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.002], dtype=np.float64))
+        
+        # Ailerons: If only one active, rotate with half efficency. If both open in same direction, increase pitch slightly. If both active in opposite directions, rotate.
+        
+        if keys[K_a]: #clockwise
+            text(1650, 960, (1, 0, 0), "LEFT AILERON: DOWN")
+            if self.__eulerAngularVelocity.val[2] < 30:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.0025], dtype=np.float64))
+        elif keys[K_q]: #counterclockwise
+            text(1650, 960, (1, 0, 0), "LEFT AILERON: UP")
+            if self.__eulerAngularVelocity.val[2] > -30:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.0025], dtype=np.float64))
+        else: #no roll acceleration
+            text(1650, 960, (1, 0, 0), "LEFT AILERON: NEUTRAL")
+            if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
+                self.__eulerAngularVelocity.setAt(2,0)
+            elif self.__eulerAngularVelocity.val[2] < 0:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.002], dtype=np.float64))
+            else:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.002], dtype=np.float64))
+        
+        if keys[K_r]: #clockwise
+            text(1650, 930, (1, 0, 0), "RIGHT AILERON: UP")
+            if self.__eulerAngularVelocity.val[2] < 30:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.0025], dtype=np.float64))
+        elif keys[K_f]: #counterclockwise
+            text(1650, 930, (1, 0, 0), "RIGHT AILERON: DOWN")
+            if self.__eulerAngularVelocity.val[2] > -30:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.0025], dtype=np.float64))
+        else: #no roll acceleration
+            text(1650, 930, (1, 0, 0), "RIGHT AILERON: NEUTRAL")
+            if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
+                self.__eulerAngularVelocity.setAt(2,0)
+            elif self.__eulerAngularVelocity.val[2] < 0:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.002], dtype=np.float64))
+            else:
+                self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.002], dtype=np.float64))
             
 
         self.__eulerAngles.addVal(self.__eulerAngularVelocity.val) #yaw, pitch, roll
@@ -186,11 +205,9 @@ class Camera:
         glLoadIdentity() #as per explanation in https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
         gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val) #use stars to unpack
 
-        text(0, 640, (1, 0, 0), "Thrust: "+str(self.__thrust))
-        text(0, 600, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(9.81)))
-        text(0, 560, (1, 0, 0), "Velocity: "+str(self.__velocity.val))
-        text(0, 520, (1, 0, 0), "Acceleration: "+str(self.__acceleration.val))
-        text(0, 480, (1, 0, 0), "Front: "+str(self.__front.val))
+        text(0, 960, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(9.81)))
+        text(0, 990, (1, 0, 0), "Velocity: "+str(self.__velocity.magnitude()))
+        text(0, 1020, (1, 0, 0), "Acceleration: "+str(self.__acceleration.magnitude()))
 
     def __resolveForces(self, deltaTime):
 
@@ -251,7 +268,7 @@ def checkforcollision(triangles, Camera):
         normal = Vector3.cross(Vector3.subtractVectors(p2,p1),
                                Vector3.subtractVectors(p3,p1))
         if Vector3.dot(normal, Camera.getPos()) <= Vector3.dot(normal, p1):
-            text(800, 800, (1, 0, 0), "CRASHED!")
+            text(800, 1000, (1, 0, 0), "CRASHED!")
 
 def mapGen(heightmap, colourmap, watermask):
     #Create our matrix for both the surface and the colours
@@ -292,42 +309,6 @@ def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex
     while vertices != []:
         triThreePoints(*vertices.pop())
     glEnd()
-
-def load_texture(image_path):
-    img = Image.open(image_path)
-    texture = np.array(list(img.getdata()))
-    w, h = img.size
-
-    texture_id = glGenTextures(1) #assigns an ID
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-    glBindTexture(GL_TEXTURE_2D, texture_id)
-
-    #Linear intepolation configuration
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-
-    #define the actual texture
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture)
-    img.close()
-
-    return texture_id
-
-def draw_graphic(texture_id, x=1500, y=800, w=240, h=185):
-    glEnable(GL_TEXTURE_2D)
-    glBindTexture(GL_TEXTURE_2D, texture_id)
-
-    glBegin(GL_QUADS)
-    glTexCoord2f(1, 1)
-    glVertex2f(x, y)
-    glTexCoord2f(0, 1)
-    glVertex2f(x + w, y)
-    glTexCoord2f(0, 0)
-    glVertex2f(x + w, y + h)
-    glTexCoord2f(1, 0)
-    glVertex2f(x, y + h)
-    glEnd()
-
-    glDisable(GL_TEXTURE_2D)
 
 #we need to import all of these variables because numba won't know about them
 @njit
@@ -421,19 +402,7 @@ def main(collectDataPermission):
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glCullFace(GL_BACK)
     glFrontFace(GL_CCW)
-    glShadeModel(GL_SMOOTH)
     glDepthRange(0.0,1.0)
-
-    #define textures
-    planeHUD = load_texture("planeHUD.png")
-    """aileron_rd = load_texture("railerondown.png")
-    aileron_ld = load_texture("lailerondown.png")
-    aileron_ru = load_texture("raileronup.png")
-    aileron_lu = load_texture("laileronup.png")
-    elevator_d = load_texture("elevatordown.png")
-    elevator_u = load_texture("elevatorup.png")
-    rudder_l = load_texture("rudderleft.png")
-    rudder_r = load_texture("rudderright.png")"""
 
     ### RUN PROGRAM ###
 
@@ -469,29 +438,14 @@ def main(collectDataPermission):
             #update the camera with input from the user
             keys = pg.key.get_pressed()
             mainCam.update(keys, (1/timeTaken))
-            text(0, 700, (1, 0, 0), str(round(timeTaken,1))+' FPS')
-            text(0, 750, (1, 0, 0), str(mainCam.getPos().val))
-            text(0, 800, (1, 0, 0), str(mainCam.getDir().val))
 
-            text(0, 100, (1, 0, 0), str(mainCam.getDir().val))
-
-            glMatrixMode (GL_PROJECTION) #load perspective mode for 3d rendering
-            glLoadIdentity()
-            gluPerspective(60, (display[0]/display[1]), 0.1, 50.0) #fov, aspect, zNear, zFar
-            glMatrixMode(GL_MODELVIEW)
+            text(0, 1050, (1, 0, 0), str(round(timeTaken,1))+' FPS')
+            text(0, 930, (1, 0, 0), str(mainCam.getPos().val))
 
             #generate the visible terrain
             verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
             renderTriangle(verticelist)
             checkforcollision(colCheck, mainCam)
-
-            glMatrixMode (GL_PROJECTION) #load orthographic mode for 2d rendering
-            glLoadIdentity()
-            gluOrtho2D(0, display[0], 0, display[1]) #dimensions of the screen
-            glMatrixMode(GL_MODELVIEW)
-            glLoadIdentity() #clear identity matrix
-
-            draw_graphic(planeHUD)
 
             pg.display.flip() #update window with active buffer contents
             pg.time.wait(10) #prevents frames from being rendered instantly
