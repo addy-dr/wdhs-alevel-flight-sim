@@ -4,21 +4,21 @@ import numpy as np
 import math
 import json
 
-#Pygame
+# Pygame
 import pygame as pg
 from pygame.locals import *
 
-#OpenGL
+# OpenGL
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
-#JIT (numba)
+# JIT (numba)
 from numba import njit
 
 from maths_module import Vector3, rotate
 
-#error and traceback handling
+# Error and traceback handling
 from crash_handler import generateLog
 import traceback
 
@@ -26,25 +26,25 @@ import traceback
 print("Packages successfully loaded.")
 #########
 
-#import data
+# Import data
 heightmap = np.array(Image.open('heightmap.bmp'))
 colourmap = np.array(Image.open('colourmap.bmp'))
 watermask = np.array(Image.open('watermask.bmp'))
-with open("NACA2412.json", "r+") as f: #produced using the Xfoil program from .dat files freely available at http://airfoiltools.com/airfoil/details?airfoil=naca2412-il
+with open("NACA2412.json", "r+") as f: # Produced using the Xfoil program from .dat files freely available at http://airfoiltools.com/airfoil/details?airfoil=naca2412-il
     naca2412_airfoil = json.load(f)[1]
-#map size
+# Map size
 ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
 RENDER_DISTANCE = 30
 
 class Camera:
-    up = Vector3([0, 1, 0]) #global definition of up independent of the camera
-    #note that with Vector3, we must define all our numbers to be an ARRAY (not list) where each number is a 64 bit float
+    up = Vector3([0, 1, 0]) # Global definition of 'up' independent of the camera
+    # Note that with Vector3, we must define all our numbers to be an ARRAY (not list) where each number is a 64 bit float
 
     def __init__(self, position):
-        self.__eulerAngles = Vector3([0,0,0]) #yaw, pitch, roll
-        self.__eulerAngularVelocity = Vector3([0,0,0]) #yaw, pitch, roll
-        self.__position = Vector3(position)    #x, y ,z
+        self.__eulerAngles = Vector3([0,0,0])   # yaw, pitch, roll
+        self.__eulerAngularVelocity = Vector3([0,0,0])  # yaw, pitch, roll
+        self.__position = Vector3(position)    # x, y ,z
         self.__velocity = Vector3([0, 0, 0])
         self.__acceleration = Vector3([0,0,0])
         self.__front = Vector3([0,0,0])
@@ -61,21 +61,22 @@ class Camera:
     def getPos(self):
         return self.__position
 
-    def getXZ(self): #relevant as determining the position of the plane on a 2d coordinate map will only require XZ coordinates, Y is irrelevant
+    def getXZ(self):
+        "Relevant as determining the position of the plane on a 2d coordinate map will only require XZ coordinates, Y is irrelevant"
         return [self.__position.val[0], self.__position.val[2]]
 
     def getDir (self):
         return self.__eulerAngles
 
     def update(self, keys, deltaTime):
-        #Handles the lookat system and camera movement
+        "Handles the lookat system and camera movement"
 
         speed = 0.2
         direction = Vector3([0, 1, 0])
 
-        #camera direction
+        # Camera direction
 
-        if keys[K_w]: #yaw: rudder
+        if keys[K_w]:   # Yaw: rudder
             if self.__eulerAngularVelocity.val[0] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0.005, 0, 0], dtype=np.float64))
             text(1650, 1020, (1, 0, 0), "RUDDER: LEFT")
@@ -83,17 +84,17 @@ class Camera:
             if self.__eulerAngularVelocity.val[0] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([-0.005, 0, 0], dtype=np.float64))
             text(1650, 1020, (1, 0, 0), "RUDDER: RIGHT")
-        else: #rudder is neutral
+        else:   # Rudder is neutral
             text(1650, 1020, (1, 0, 0), "RUDDER: NEUTRAL")
-            if abs(self.__eulerAngularVelocity.val[0]) < 0.1: #prevent jittery motion from overshooting equilibrium
+            if abs(self.__eulerAngularVelocity.val[0]) < 0.1:   # Prevent jittery motion from overshooting equilibrium
                self.__eulerAngularVelocity.setAt(0,0) 
             elif self.__eulerAngularVelocity.val[0] < 0:
                 self.__eulerAngularVelocity.addVal(np.array([0.02, 0, 0], dtype=np.float64))
             else:
                 self.__eulerAngularVelocity.addVal(np.array([-0.02, 0, 0], dtype=np.float64))
 
-        # ailerons and elevator handled by the same block of code #
-        if keys[K_e]: #pitch: elevator
+        # Ailerons and elevator handled by the same block of code #
+        if keys[K_e]:   # Pitch: elevator
             if self.__eulerAngularVelocity.val[1] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0.005, 0], dtype=np.float64))
             text(1650, 990, (1, 0, 0), "ELEVATOR: UP")
@@ -101,7 +102,7 @@ class Camera:
             if self.__eulerAngularVelocity.val[1] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([0, -0.005, 0], dtype=np.float64))
             text(1650, 990, (1, 0, 0), "ELEVATOR: DOWN")
-        elif (keys[K_q] and keys[K_r]): #ailerons both in same direction
+        elif (keys[K_q] and keys[K_r]): # Ailerons both in same direction
             text(1650, 990, (1, 0, 0), "ELEVATOR: NEUTRAL")
             text(1650, 960, (1, 0, 0), "LEFT AILERON: UP")
             text(1650, 930, (1, 0, 0), "RIGHT AILERON: UP")
@@ -113,10 +114,10 @@ class Camera:
             text(1650, 930, (1, 0, 0), "RIGHT AILERON: DOWN")
             if self.__eulerAngularVelocity.val[1] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([0, -0.0025, 0], dtype=np.float64))
-        else: #elevator is neutral
+        else:   # Elevator is neutral
             text(1650, 990, (1, 0, 0), "ELEVATOR: NEUTRAL")
         
-            if abs(self.__eulerAngularVelocity.val[1]) < 0.1:   #prevents de-acceleration of pitch from overshooting itself
+            if abs(self.__eulerAngularVelocity.val[1]) < 0.1:   # Prevents de-acceleration of pitch from overshooting itself
                 self.__eulerAngularVelocity.setAt(1,0)
             elif self.__eulerAngularVelocity.val[1] < 0:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0.02, 0], dtype=np.float64))
@@ -125,15 +126,15 @@ class Camera:
         
         # Ailerons: If only one active, rotate with half efficency. If both open in same direction, increase pitch slightly. If both active in opposite directions, rotate.
         
-        if keys[K_a]: #clockwise
+        if keys[K_a]:   # Clockwise
             text(1650, 960, (1, 0, 0), "LEFT AILERON: DOWN")
             if self.__eulerAngularVelocity.val[2] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.0025], dtype=np.float64))
-        elif keys[K_q]: #counterclockwise
+        elif keys[K_q]: # Counterclockwise
             text(1650, 960, (1, 0, 0), "LEFT AILERON: UP")
             if self.__eulerAngularVelocity.val[2] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.0025], dtype=np.float64))
-        else: #no roll acceleration
+        else:   # No roll acceleration
             text(1650, 960, (1, 0, 0), "LEFT AILERON: NEUTRAL")
             if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
                 self.__eulerAngularVelocity.setAt(2,0)
@@ -142,15 +143,15 @@ class Camera:
             else:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.002], dtype=np.float64))
         
-        if keys[K_r]: #clockwise
+        if keys[K_r]:   # Clockwise
             text(1650, 930, (1, 0, 0), "RIGHT AILERON: UP")
             if self.__eulerAngularVelocity.val[2] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.0025], dtype=np.float64))
-        elif keys[K_f]: #counterclockwise
+        elif keys[K_f]: # Counterclockwise
             text(1650, 930, (1, 0, 0), "RIGHT AILERON: DOWN")
             if self.__eulerAngularVelocity.val[2] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.0025], dtype=np.float64))
-        else: #no roll acceleration
+        else:   # No roll acceleration
             text(1650, 930, (1, 0, 0), "RIGHT AILERON: NEUTRAL")
             if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
                 self.__eulerAngularVelocity.setAt(2,0)
@@ -160,23 +161,24 @@ class Camera:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.002], dtype=np.float64))
             
 
-        self.__eulerAngles.addVal(self.__eulerAngularVelocity.val) #yaw, pitch, roll
-        if self.__eulerAngles.val[1] > 89: #keep pitch to 180 degree bounds
+        self.__eulerAngles.addVal(self.__eulerAngularVelocity.val)  # yaw, pitch, roll
+        if self.__eulerAngles.val[1] > 89:  # Keep pitch to 180 degree bounds
             self.__eulerAngles.setAt(1,89)
         if self.__eulerAngles.val[1] < -89:
             self.__eulerAngles.setAt(1,-89)
-        self.__eulerAngles.setAt(0,self.__eulerAngles.val[0] % 360) #keep yaw within the bounds
+        self.__eulerAngles.setAt(0,self.__eulerAngles.val[0] % 360) # Keep yaw within the bounds
 
-        #From drawing trigonemtric diagrams:
+        # From drawing trigonemtric diagrams:
         direction.setVal([math.cos(math.radians(self.__eulerAngles.val[0])) * math.cos(math.radians(self.__eulerAngles.val[1])),
         math.sin(math.radians(self.__eulerAngles.val[1])),
         math.sin(math.radians(self.__eulerAngles.val[0])) * math.cos(math.radians(self.__eulerAngles.val[1]))])
-        self.__front = direction.normalise() #get the front normalised vector
+        self.__front = direction.normalise()    # Get the front normalised vector
         self.__right = (Vector3.cross(Camera.up, self.__front)).normalise()
-        self.__right = rotate(self.__right, self.__front, math.radians(self.__eulerAngles.val[2])) #rotate right around front by roll
+        self.__right = rotate(self.__right, self.__front, math.radians(self.__eulerAngles.val[2]))  # Rotate right around front by roll
         self.__up = Vector3.cross(self.__front, self.__right)
 
-        if keys[K_z]: #thrust
+        # Thrust
+        if keys[K_z]:
             self.__thrust += 100
         if keys[K_x]:
             self.__thrust -= 100
@@ -188,7 +190,8 @@ class Camera:
 
         self.__resolveForces(deltaTime)
 
-        for i in range(0,3): #Accelerate the velocity. Make sure the value on the axes doesnt surpass 40ms⁻1, which is the hardcoded limit.
+        # Accelerate the velocity. Make sure the value on the axes doesnt surpass 40ms⁻1, which is the hardcoded limit (prevents infinite velocity from acceleration in case of drag not working)
+        for i in range(0,3):
             newVelocity = self.__velocity.val[i]+self.__acceleration.val[i]
             if newVelocity > 40:
                 self.__velocity.setAt(i,40)
@@ -198,12 +201,12 @@ class Camera:
                 self.__velocity.setAt(i,newVelocity)
 
         newPos = []
-        for i in range(3): #3 values in a Vector3
+        for i in range(3):  # 3 values in a Vector3
             newPos.append(self.__position.val[i]+self.__velocity.val[i]*0.001*deltaTime) #moves the plane, reduces scale by 10000x
         self.__position.setVal(newPos)
 
-        glLoadIdentity() #as per explanation in https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
-        gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val) #use stars to unpack
+        glLoadIdentity()    # As per explanation in https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
+        gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val)
 
         text(0, 960, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(9.81)))
         text(0, 990, (1, 0, 0), "Velocity: "+str(self.__velocity.magnitude()))
@@ -213,26 +216,24 @@ class Camera:
 
         self.__angleofattack = math.degrees(math.asin(
             Vector3.subtractVectors(self.__front, self.__velocity.normalise()).normalise().val[1],
-            )) #via trigonemtry. We normalise twice, once to get rid of velocity magnitude, second time to simplifcy c=a/h calculation
+            ))  # Via trigonemtry. We normalise twice, once to get rid of velocity magnitude, second time to simplifcy c=a/h calculation
         
         self.__climbangle = math.degrees(math.asin(
             self.__front.val[1],
-            )) #via trigonemtry. 
-
-        text(0, 440, (1, 0, 0), "Climbangle: "+str(self.__climbangle))
+            ))  # Via trigonemtry. 
         
         if abs(self.__angleofattack) > 14.5:
             c_l, c_d = naca2412_airfoil["14.75"]
         else:
-            self.__angleofattack = 0.25 * round(self.__angleofattack*4) #rounds to closest 0.25
-            c_l, c_d = naca2412_airfoil[str(self.__angleofattack)] #get angle of attack coefficent values from database
+            self.__angleofattack = 0.25 * round(self.__angleofattack*4) # Rounds to closest 0.25
+            c_l, c_d = naca2412_airfoil[str(self.__angleofattack)]  # Get angle of attack coefficent values from database
 
-        lift = 0.5 * Vector3.dot(self.__velocity,self.__front)**2  * self.__wingArea * c_l * 1.2 #1.2 is the density of air
+        lift = 0.5 * Vector3.dot(self.__velocity,self.__front)**2  * self.__wingArea * c_l * 1.2 # 1.2 is the density of air
         drag = 0.5 * self.__velocity.magnitude()**2  * self.__wingArea * c_d * 1.2
 
-        if lift > 15000: #set upper cap for lift in case of bug
+        if lift > 15000: # Set upper cap for lift in case of bug
             lift = 15000
-        if drag > 15000: #set upper cap for drag in case os
+        if drag > 15000: # Set upper cap for drag in case os
             drag = 15000
 
         self.__angleofattack = math.radians(self.__angleofattack)
@@ -242,10 +243,10 @@ class Camera:
         horizontal = (self.__thrust-drag) * math.cos(self.__climbangle) - lift * math.sin(self.__climbangle) 
 
 
-        if self.__velocity.val[0] * self.__acceleration.val[0] > 0 and horizontal < 0: # drag would cause acceleration instead of deceleration if this is true.
+        if self.__velocity.val[0] * self.__acceleration.val[0] > 0 and horizontal < 0:  # Drag would cause acceleration instead of deceleration if this is true.
             horizontal = 0
 
-        if self.__thrust < drag: #act against velocity to slow down plane. If removed, causes infinite acceleration due to "drag" in the opposite way the plane is facing when 0 thrust
+        if self.__thrust < drag:    # Act against velocity to slow down plane. If removed, causes infinite acceleration due to "drag" in the opposite way the plane is facing when 0 thrust
             self.__acceleration = Vector3([ # x y z
                 (horizontal*deltaTime*self.__velocity.normalise().val[0])/self.__mass,
                 (vertical*deltaTime)/self.__mass,
@@ -271,26 +272,27 @@ def checkforcollision(triangles, Camera):
             text(800, 1000, (1, 0, 0), "CRASHED!")
 
 def mapGen(heightmap, colourmap, watermask):
-    #Create our matrix for both the surface and the colours
+    # Create our matrix for both the surface and the colours
     vertList = []
-    coloursList = [(0,0.3,0.8)] #space 0 reserved for ocean tile colour
+    coloursList = [(0,0.3,0.8)] # Space 0 reserved for ocean tile colour
     for zcord in range(ZLENGTH):
         for xcord in range(XLENGTH):
             if watermask[zcord][xcord][0] != 0: # => water tile as defined in the mask
-                vertList.append((xcord,0.3,zcord)) #so render as an ocean tile
+                vertList.append((xcord,0.3,zcord))  # So render as an ocean tile
+                # Generic lowlying land colour. Already check in map generating function if a tile is at sea level, so this is simply the colour for terrain sloping into sea level.
                 coloursList.append((0.85+uniform(-0.05,0.05),
                                     0.95+uniform(-0.05,0.05),
-                                    0.85+uniform(-0.05,0.05))) #generic lowlying land colour. Already check in map generating function if a tile is at sea level, so this is simply the colour for terrain sloping into sea level.
+                                    0.85+uniform(-0.05,0.05)))
                 coloursList.append((0.85+uniform(-0.05,0.05),
                                     0.95+uniform(-0.05,0.05),
-                                    0.85+uniform(-0.05,0.05))) #We do this twice since each "pixel" corresponds to two polygons.
+                                    0.85+uniform(-0.05,0.05)))  # We do this twice since each "pixel" corresponds to two polygons.
             else:
                 vertList.append((xcord,heightmap[zcord][xcord]/75,zcord))
                 pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05),
                                (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05),
-                               (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05)) #Convert from 0-255 RGB format to 0-1 RGB format. Random number adds colour variation for aesthetic purposes
-                coloursList.append(pixelColour) #define RGB values for all corresponding vertices
-                #We do this twice since each "pixel" corresponds to two polygons. We can afford to take more processing while loading the map at this stage.
+                               (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05))    # Convert from 0-255 RGB format to 0-1 RGB format. Random number adds colour variation for aesthetic purposes
+                coloursList.append(pixelColour) # Define RGB values for all corresponding vertices
+                # We do this twice since each "pixel" corresponds to two polygons. We can afford to take more processing while loading the map at this stage.
                 pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05),
                                (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05),
                                (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05))
@@ -303,21 +305,20 @@ def triThreePoints(p1,p2,p3,c):
     glVertex3fv(p2)
     glVertex3fv(p3)
 
-#renders a mesh of triangles based on the coords inputted
-def renderTriangle(vertices):  #format of each entry: vertex 1, vertex 2, vertex 3, colour
+def renderTriangle(vertices):
+    "Renders a mesh of triangles based on the coords inputted"
+    # Format of each entry: vertex 1, vertex 2, vertex 3, colour
     glBegin(GL_TRIANGLES)
     while vertices != []:
         triThreePoints(*vertices.pop())
     glEnd()
 
-#we need to import all of these variables because numba won't know about them
+# We need to import all of these variables because numba won't know about them
 @njit
 def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
     verticelist, collisionCheckList = [], []
-    #We define an inner function so we can calculate arctan.This is since we can't import math or numpy into this njit func.
-    #To calculate arctan, we use taylor series. This only works for small input values (here <0.1), so we otherwise use a trig identity derived from the arctan addition formula (found on https://en.wikipedia.org/wiki/List_of_trigonometric_identities) which can be expressed as arctanx = 2 * arctan(x / (1 + sqrt(1 + x^2)))
-    #We use a loop to reduce x until it is smaller than 0.1, and then multiply by 2 by how many times we reduced it, essentially causing a cascading effect to get arctan.
-    #cant use recursion here as njit doesnt support it
+    # We define an inner function so we can calculate arctan.This is since we can't import math or numpy into this njit func.
+    # cant use recursion here as njit doesnt support it
     def arctan(x):
         i = 0
         while abs(x) > 0.1:
@@ -328,18 +329,18 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
     length = len(mapMatrix)
     try:
         for i in range(length):                   
-            if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) > RENDER_DISTANCE: #only renders triangles within the render distance
+            if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) > RENDER_DISTANCE:    # Only renders triangles within the render distance
                 pass
-            elif i+XLENGTH+1 > length: #This stops vertices at the edge from rendering triangles - this previously led to triangles being rendered across the entire map
+            elif i+XLENGTH+1 > length:  # This stops vertices at the edge from rendering triangles - this previously led to triangles being rendered across the entire map
                 pass
-            elif i%XLENGTH == XLENGTH-1: #same as above but for other edge
+            elif i%XLENGTH == XLENGTH-1:    # Same as above but for other edge
                 pass
             else:
-                if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) < 1: # check for collision
+                if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) < 1:  # Check for collision
                     collisionCheckList.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH]))
                     collisionCheckList.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1]))
 
-                if (mapMatrix[i][0]-camPositionx) < 0: #Calculate the bearing of the vertice from the x axis
+                if (mapMatrix[i][0]-camPositionx) < 0:  # Calculate the bearing of the vertice from the x axis
                     bearing = 180 - abs(arctan((mapMatrix[i][2]-camPositionz)/(mapMatrix[i][0]-camPositionx)))
                 else:
                     bearing = abs(arctan((mapMatrix[i][2]-camPositionz)/(mapMatrix[i][0]-camPositionx)))
@@ -347,24 +348,25 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
                 if (mapMatrix[i][2]-camPositionz) < 0:
                     bearing = 360-bearing
 
-                if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0 and pitch>-75: #If the vertice is more than 100 degrees away from the yaw, do not render. Also renders every tile if looking straight down, to preserve illusion
+                # If the vertice is more than 100 degrees away from the yaw, do not render. Also renders every tile if looking straight down, to preserve illusion
+                if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0 and pitch>-75:
                     pass
 
                 else:
-                    #the two triangles adjacent to any vertex
-                    if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.3: #This is only true if all three corners are at sea level
+                    # The two triangles adjacent to any vertex
+                    if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.3:  # This is only true if all three corners are at sea level
                         verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[0]))
                     else:
                         verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[2*i+1]))
-                    if mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == mapMatrix[i+XLENGTH+1][1] == 0.3: #This is only true if all three corners are at sea level
+                    if mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == mapMatrix[i+XLENGTH+1][1] == 0.3:    # This is only true if all three corners are at sea level
                         verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[0]))
                     else:
                         verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[2*i+2]))
-    except Exception: #invalid triangle, avoid crashing and dont render it instead
+    except Exception:   # Invalid triangle, avoid crashing and dont render it instead
         pass
     return verticelist, collisionCheckList
 
-#Define a text rendering framework:
+# Define a text rendering framework:
 def text(x, y, color, text):
     glColor3fv(color)
     glWindowPos2f(x, y)
@@ -376,22 +378,22 @@ def main(collectDataPermission):
     pg.font.init()
     glutInit()
     glutInitDisplayMode(GLUT_RGBA)
-    #pg.mouse.set_visible(False)
+    # pg.mouse.set_visible(False)
 
     display = (1920, 1080)
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
-    mainCam = Camera((250,4,250)) #position
-    glClearColor(25/255, 235/225, 235/225, 0) #sets the colour of the "sky"
+    mainCam = Camera((250,4,250))   # Position
+    glClearColor(25/255, 235/225, 235/225, 0)   # Sets the colour of the "sky"
 
     glMatrixMode(GL_PROJECTION)
-    gluPerspective(60, (display[0]/display[1]), 0.1, 50.0) #fov, aspect, zNear, zFar
+    gluPerspective(60, (display[0]/display[1]), 0.1, 50.0) # fov, aspect, zNear, zFar
     glMatrixMode(GL_MODELVIEW)
     glPushMatrix()
-    print("Display initialised")    #test
+    print("Display initialised")    # for logging
 
     mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
-    print("Map Generated")    #test
+    print("Map Generated")    # for logging
 
     #culling settings
     glDepthMask(GL_TRUE)
@@ -406,9 +408,9 @@ def main(collectDataPermission):
 
     ### RUN PROGRAM ###
 
-    currTime=pg.time.get_ticks() # initialise program clock
+    currTime=pg.time.get_ticks() # Initialise program clock
     
-    while True: #allows us to actually leave the program
+    while True: # Allows us to actually leave the program
         try:
             for event in pg.event.get():
                 if event.type == pg.QUIT:
@@ -416,39 +418,39 @@ def main(collectDataPermission):
                     quit()
         
                 if event.type == pg.KEYDOWN:
-                    #regenerate the map for debugging purposes
+                    # Regenerate the map for debugging purposes
                     if event.key == pg.K_m:
                         mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
                         pg.time.wait(1)
 
-                    #dedicated crash button
+                    # Dedicated crash button
                     if event.key == pg.K_c:
                         raise Exception("developer forced crash")
 
-            #clear buffer
+            # Clear buffer
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
 
             try:
                 timeTaken=1000/((pg.time.get_ticks()-currTime))
-            except Exception: #divide by zero sometimes happens when a frame is rendered instantly
-                timeTaken = 1000 # small value of t
+            except Exception: # Divide by zero sometimes happens when a frame is rendered instantly
+                timeTaken = 1000 # Small value of t
 
             currTime=pg.time.get_ticks()
 
-            #update the camera with input from the user
+            # Update the camera with input from the user
             keys = pg.key.get_pressed()
             mainCam.update(keys, (1/timeTaken))
 
             text(0, 1050, (1, 0, 0), str(round(timeTaken,1))+' FPS')
-            text(0, 930, (1, 0, 0), str(mainCam.getPos().val))
+            text(0, 930, (1, 0, 0), "Position: " + str(mainCam.getPos().val))
 
-            #generate the visible terrain
+            # Generate the visible terrain
             verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
             renderTriangle(verticelist)
             checkforcollision(colCheck, mainCam)
 
-            pg.display.flip() #update window with active buffer contents
-            pg.time.wait(10) #prevents frames from being rendered instantly
+            pg.display.flip() # Update window with active buffer contents
+            pg.time.wait(10) # Prevents frames from being rendered instantly
 
         except Exception as err:
             print("An error has ocurred.")
