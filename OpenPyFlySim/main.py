@@ -211,6 +211,7 @@ class Camera:
         text(0, 960, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(9.81)))
         text(0, 990, (1, 0, 0), "Velocity: "+str(self.__velocity.magnitude()))
         text(0, 1020, (1, 0, 0), "Acceleration: "+str(self.__acceleration.magnitude()))
+        text(0, 900, (1, 0, 0), "Throttle: "+str(round(self.__thrust/15000*100))+'%')
 
     def __resolveForces(self, deltaTime):
 
