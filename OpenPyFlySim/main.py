@@ -62,6 +62,9 @@ class Camera:
 
         self.__takeOffFlag = takenOff
 
+        gluLookAt(5,5,5, *Vector3.addVectors(Vector3([5,5,5]), self.__front).val, *self.__up.val)
+        gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val)
+
     def getPos(self):
         return self.__position
 
@@ -96,7 +99,6 @@ class Camera:
             else:
                 self.__eulerAngularVelocity.addVal(np.array([-0.02, 0, 0], dtype=np.float64))
 
-        # Ailerons and elevator handled by the same block of code #
         if keys[K_e]:   # Pitch: elevator
             if self.__eulerAngularVelocity.val[1] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0.005, 0], dtype=np.float64))
@@ -105,18 +107,6 @@ class Camera:
             if self.__eulerAngularVelocity.val[1] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([0, -0.005, 0], dtype=np.float64))
             text(1650, 990, (1, 0, 0), "ELEVATOR: DOWN")
-        elif (keys[K_q] and keys[K_r]): # Ailerons both in same direction
-            text(1650, 990, (1, 0, 0), "ELEVATOR: NEUTRAL")
-            text(1650, 960, (1, 0, 0), "LEFT AILERON: UP")
-            text(1650, 930, (1, 0, 0), "RIGHT AILERON: UP")
-            if self.__eulerAngularVelocity.val[1] < 30:
-                self.__eulerAngularVelocity.addVal(np.array([0, 0.0025, 0], dtype=np.float64))
-        elif (keys[K_a] and  keys[K_f]):
-            text(1650, 990, (1, 0, 0), "ELEVATOR: NEUTRAL")
-            text(1650, 960, (1, 0, 0), "LEFT AILERON: DOWN")
-            text(1650, 930, (1, 0, 0), "RIGHT AILERON: DOWN")
-            if self.__eulerAngularVelocity.val[1] > -30:
-                self.__eulerAngularVelocity.addVal(np.array([0, -0.0025, 0], dtype=np.float64))
         else:   # Elevator is neutral
             text(1650, 990, (1, 0, 0), "ELEVATOR: NEUTRAL")
         
@@ -127,8 +117,7 @@ class Camera:
             else:
                 self.__eulerAngularVelocity.addVal(np.array([0, -0.02, 0], dtype=np.float64))
         
-        # Ailerons: If only one active, rotate with half efficency. If both open in same direction, increase pitch slightly. If both active in opposite directions, rotate.
-        
+        # Ailerons: If only one active, rotate with half efficency. If both active in opposite directions, rotate.
         if keys[K_a]:   # Clockwise
             text(1650, 960, (1, 0, 0), "LEFT AILERON: DOWN")
             if self.__eulerAngularVelocity.val[2] < 30:
@@ -194,8 +183,8 @@ class Camera:
         # Based on formula P = Fv:
         try:
             self.__thrust = (self.__POWER / self.__velocity.magnitude()) * self.__throttlePercent/100
-            if self.__thrust > 15000: # Set upper cap for thrust
-                self.__thrust = 15000
+            if self.__thrust > 8000: # Set upper cap for thrust
+                self.__thrust = 8000
         except ZeroDivisionError:
             if self.__throttlePercent > 0:
                 self.__thrust = 20 # Small thrust so that we can actually get out of zero velocity
@@ -207,6 +196,11 @@ class Camera:
         # Accelerate the velocity. Make sure the value on the axes doesnt surpass 40ms⁻1, which is the hardcoded limit (prevents infinite velocity from acceleration in case of drag not working)
         for i in range(0,3):
             newVelocity = self.__velocity.val[i]+self.__acceleration.val[i]
+            if i == 1 and not self.__takeOffFlag:   # Code triggered if you haven't taken off yet
+                if self.__acceleration.val[i] <= 0.1: # Must start accelerating up to lift off
+                    newVelocity = 0
+                else:
+                    self.__takeOffFlag = True
             if newVelocity > 40:
                 self.__velocity.setAt(i,40)
             elif newVelocity < -40:
@@ -216,23 +210,16 @@ class Camera:
 
         newPos = []
         for i in range(3):  # 3 values in a Vector3
-            if i == 1 and not self.__takeOffFlag:
-                if self.__velocity.val[i] <= 0.1:
-                    newPos.append(self.__position.val[i])
-                else:
-                    self.__takeOffFlag = True
-                    newPos.append(self.__position.val[i]+self.__velocity.val[i]*0.001*deltaTime)
-            else:
-                newPos.append(self.__position.val[i]+self.__velocity.val[i]*0.001*deltaTime) #moves the plane, reduces scale by 100x
+            newPos.append(self.__position.val[i]+self.__velocity.val[i]*0.001*deltaTime) #moves the plane, reduces scale by 100x
         self.__position.setVal(newPos)
 
         glLoadIdentity()    # As per explanation in https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
         gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val)
 
-        text(0, 960, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(9.81)))
+        text(0, 960, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude()+9.81)/(9.81))) # g-force = (a+g)/g
         text(0, 990, (1, 0, 0), "Velocity: "+str(self.__velocity.magnitude()))
         text(0, 1020, (1, 0, 0), "Acceleration: "+str(self.__acceleration.magnitude()))
-        text(0, 900, (1, 0, 0), "Throttle: "+str(round((self.__thrust/2000)*100))+'%')
+        text(0, 900, (1, 0, 0), "Throttle: "+str(round((self.__throttlePercent)))+'%')
 
     def __resolveForces(self, deltaTime):
 
@@ -250,7 +237,7 @@ class Camera:
             self.__angleofattack = 0.25 * round(self.__angleofattack*4) # Rounds to closest 0.25
             c_l, c_d = naca2412_airfoil[str(self.__angleofattack)]  # Get angle of attack coefficent values from database
 
-        lift = 0.5 * Vector3.dot(self.__velocity,self.__front)**2  * self.__WINGAREA * c_l * 1.2 # 1.2 is the density of air
+        lift = 0.5 * Vector3.dot(self.__velocity,self.__front)**2  * self.__WINGAREA * c_l * 1.2 # 1.2 is the density of air. velocity must be in the direction of front
         drag = 0.5 * self.__velocity.magnitude()**2  * self.__WINGAREA * c_d * 1.2
 
         if lift > 15000: # Set upper cap for lift in case of bug
@@ -264,9 +251,6 @@ class Camera:
         vertical = (self.__thrust-drag) * abs(math.sin(self.__climbangle)) + lift * math.cos(self.__climbangle) - 9.81*self.__MASS
         horizontal = (self.__thrust-drag) * math.cos(self.__climbangle) - lift * math.sin(self.__climbangle) 
 
-        text(0, 600, (1, 0, 0), str(self.__velocity.val))
-        text(0, 500, (1, 0, 0), str(self.__acceleration.val))
-        text(0, 400, (1, 0, 0), str(self.__eulerAngles.val))
 
         if self.__velocity.val[0] * self.__acceleration.val[0] > 0 and horizontal < 0:  # Drag would cause acceleration instead of deceleration if this is true.
             horizontal = 0
