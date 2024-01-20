@@ -30,7 +30,9 @@ print("Packages successfully loaded.")
 heightmap = np.array(Image.open('heightmap.bmp'))
 colourmap = np.array(Image.open('colourmap.bmp'))
 watermask = np.array(Image.open('watermask.bmp'))
-with open("NACA2412.json", "r+") as f: # Produced using the Xfoil program from .dat files freely available at http://airfoiltools.com/airfoil/details?airfoil=naca2412-il
+with open("NACA2412.json", "r+") as f:
+    # Produced using the Xfoil program from .dat files freely available at
+    # http://airfoiltools.com/airfoil/details?airfoil=naca2412-il
     naca2412_airfoil = json.load(f)[1]
 # Map size
 ZLENGTH = len(heightmap)
@@ -39,7 +41,8 @@ RENDER_DISTANCE = 30
 
 class Camera:
     up = Vector3([0, 1, 0]) # Global definition of 'up' independent of the camera
-    # Note that with Vector3, we must define all our numbers to be an ARRAY (not list) where each number is a 64 bit float
+    # Note that with Vector3, we must define all our numbers to be an
+    # ARRAY (not list) where each number is a 64 bit float
 
     def __init__(self, position, takenOff):
         self.__eulerAngles = Vector3([270,0,0])   # yaw, pitch, roll
@@ -62,14 +65,12 @@ class Camera:
 
         self.__takeOffFlag = takenOff
 
-        gluLookAt(5,5,5, *Vector3.addVectors(Vector3([5,5,5]), self.__front).val, *self.__up.val)
-        gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val)
-
     def getPos(self):
         return self.__position
 
     def getXZ(self):
-        "Relevant as determining the position of the plane on a 2d coordinate map will only require XZ coordinates, Y is irrelevant"
+        "Relevant as determining the position of the plane on a 2d
+        # coordinate map will only require XZ coordinates, Y is irrelevant"
         return [self.__position.val[0], self.__position.val[2]]
 
     def getDir (self):
@@ -92,7 +93,8 @@ class Camera:
             text(1650, 1020, (1, 0, 0), "RUDDER: RIGHT")
         else:   # Rudder is neutral
             text(1650, 1020, (1, 0, 0), "RUDDER: NEUTRAL")
-            if abs(self.__eulerAngularVelocity.val[0]) < 0.1:   # Prevent jittery motion from overshooting equilibrium
+            if abs(self.__eulerAngularVelocity.val[0]) < 0.1:
+                # Prevent jittery motion from overshooting equilibrium
                self.__eulerAngularVelocity.setAt(0,0) 
             elif self.__eulerAngularVelocity.val[0] < 0:
                 self.__eulerAngularVelocity.addVal(np.array([0.02, 0, 0], dtype=np.float64))
@@ -110,14 +112,15 @@ class Camera:
         else:   # Elevator is neutral
             text(1650, 990, (1, 0, 0), "ELEVATOR: NEUTRAL")
         
-            if abs(self.__eulerAngularVelocity.val[1]) < 0.1:   # Prevents de-acceleration of pitch from overshooting itself
+            if abs(self.__eulerAngularVelocity.val[1]) < 0.1:
+                # Prevents de-acceleration of pitch from overshooting itself
                 self.__eulerAngularVelocity.setAt(1,0)
             elif self.__eulerAngularVelocity.val[1] < 0:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0.02, 0], dtype=np.float64))
             else:
                 self.__eulerAngularVelocity.addVal(np.array([0, -0.02, 0], dtype=np.float64))
         
-        # Ailerons: If only one active, rotate with half efficency. If both active in opposite directions, rotate.
+        # Ailerons: If both active in opposite directions, rotate.
         if keys[K_a]:   # Clockwise
             text(1650, 960, (1, 0, 0), "LEFT AILERON: DOWN")
             if self.__eulerAngularVelocity.val[2] < 30:
@@ -161,7 +164,7 @@ class Camera:
         self.__eulerAngles.setAt(0,self.__eulerAngles.val[0] % 360) # Keep yaw within the bounds
 
         # From drawing trigonemtric diagrams:
-        direction.setVal([math.cos(math.radians(self.__eulerAngles.val[0])) * math.cos(math.radians(self.__eulerAngles.val[1])),
+        direction.setVal([math.cos(math.radians(self.__eulerAngles.val[0]))*math.cos(math.radians(self.__eulerAngles.val[1])),
         math.sin(math.radians(self.__eulerAngles.val[1])),
         math.sin(math.radians(self.__eulerAngles.val[0])) * math.cos(math.radians(self.__eulerAngles.val[1]))])
         self.__front = direction.normalise()    # Get the front normalised vector
@@ -193,7 +196,8 @@ class Camera:
 
         self.__resolveForces(deltaTime)
 
-        # Accelerate the velocity. Make sure the value on the axes doesnt surpass 40ms⁻1, which is the hardcoded limit (prevents infinite velocity from acceleration in case of drag not working)
+        # Accelerate the velocity. Make sure the value on the axes doesnt surpass 40ms⁻1,
+        # which is the hardcoded limit (prevents infinite velocity from acceleration in case of drag not working)
         for i in range(0,3):
             newVelocity = self.__velocity.val[i]+self.__acceleration.val[i]
             if i == 1 and not self.__takeOffFlag:   # Code triggered if you haven't taken off yet
@@ -225,7 +229,8 @@ class Camera:
 
         self.__angleofattack = math.degrees(math.asin(
             Vector3.subtractVectors(self.__front, self.__velocity.normalise()).normalise().val[1],
-            ))  # Via trigonemtry. We normalise twice, once to get rid of velocity magnitude, second time to simplifcy c=a/h calculation
+            ))  # Via trigonemtry. We normalise twice,
+            # once to get rid of velocity magnitude, second time to simplifcy c=a/h calculation
         
         self.__climbangle = math.degrees(math.asin(
             self.__front.val[1],
@@ -237,8 +242,9 @@ class Camera:
             self.__angleofattack = 0.25 * round(self.__angleofattack*4) # Rounds to closest 0.25
             c_l, c_d = naca2412_airfoil[str(self.__angleofattack)]  # Get angle of attack coefficent values from database
 
-        lift = 0.5 * Vector3.dot(self.__velocity,self.__front)**2  * self.__WINGAREA * c_l * 1.2 # 1.2 is the density of air. velocity must be in the direction of front
-        drag = 0.5 * self.__velocity.magnitude()**2  * self.__WINGAREA * c_d * 1.2
+        # 1.2 is the density of air. velocity must be in the direction of front
+        lift = 0.5 * Vector3.dot(self.__velocity,self.__front)**2  * self.__WINGAREA * c_l * 1.2
+        drag = 0.5 * Vector3.dot(self.__velocity,self.__up)**2  * self.__WINGAREA * c_d * 1.2
 
         if lift > 15000: # Set upper cap for lift in case of bug
             lift = 15000
@@ -252,10 +258,12 @@ class Camera:
         horizontal = (self.__thrust-drag) * math.cos(self.__climbangle) - lift * math.sin(self.__climbangle) 
 
 
-        if self.__velocity.val[0] * self.__acceleration.val[0] > 0 and horizontal < 0:  # Drag would cause acceleration instead of deceleration if this is true.
+        if self.__velocity.val[0] * self.__acceleration.val[0] > 0 and horizontal < 0: 
+            # Drag would cause acceleration instead of deceleration if this is true.
             horizontal = 0
 
-        if self.__thrust < drag:    # Act against velocity to slow down plane. If removed, causes infinite acceleration due to "drag" in the opposite way the plane is facing when 0 thrust
+        if self.__thrust < drag:    # Act against velocity to slow down plane.
+        # If removed, causes infinite acceleration due to "drag" in the opposite way the plane is facing when 0 thrust
             self.__acceleration = Vector3([ # x y z
                 (horizontal*self.__velocity.normalise().val[0])/self.__MASS,
                 (vertical)/self.__MASS,
@@ -288,7 +296,8 @@ def mapGen(heightmap, colourmap, watermask):
         for xcord in range(XLENGTH):
             if watermask[zcord][xcord][0] != 0: # => water tile as defined in the mask
                 vertList.append((xcord,0.3,zcord))  # So render as an ocean tile
-                # Generic lowlying land colour. Already check in map generating function if a tile is at sea level, so this is simply the colour for terrain sloping into sea level.
+                # Generic lowlying land colour. Already check in map generating function if a tile is at sea level,
+                # so this is simply the colour for terrain sloping into sea level.
                 coloursList.append((0.85+uniform(-0.05,0.05),
                                     0.95+uniform(-0.05,0.05),
                                     0.85+uniform(-0.05,0.05)))
@@ -297,11 +306,13 @@ def mapGen(heightmap, colourmap, watermask):
                                     0.85+uniform(-0.05,0.05)))  # We do this twice since each "pixel" corresponds to two polygons.
             else:
                 vertList.append((xcord,heightmap[zcord][xcord]/75,zcord))
+                # Convert from 0-255 RGB format to 0-1 RGB format. Random number adds colour variation for aesthetic purposes
                 pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05),
                                (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05),
-                               (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05))    # Convert from 0-255 RGB format to 0-1 RGB format. Random number adds colour variation for aesthetic purposes
+                               (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05))
                 coloursList.append(pixelColour) # Define RGB values for all corresponding vertices
-                # We do this twice since each "pixel" corresponds to two polygons. We can afford to take more processing while loading the map at this stage.
+                # We do this twice since each "pixel" corresponds to two polygons.
+                # We can afford to take more processing while loading the map at this stage.
                 pixelColour = ((colourmap[zcord][xcord][0]/255)+uniform(-0.05,0.05),
                                (colourmap[zcord][xcord][1]/255)+uniform(-0.05,0.05),
                                (colourmap[zcord][xcord][2]/255)+uniform(-0.05,0.05))
@@ -326,7 +337,8 @@ def renderTriangle(vertices):
 @njit
 def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
     verticelist, collisionCheckList = [], []
-    # We define an inner function so we can calculate arctan.This is since we can't import math or numpy into this njit func.
+    # We define an inner function so we can calculate arctan.
+    # This is since we can't import math or numpy into this njit func.
     # cant use recursion here as njit doesnt support it
     def arctan(x):
         i = 0
@@ -340,7 +352,8 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
         for i in range(length):                   
             if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) > RENDER_DISTANCE:    # Only renders triangles within the render distance
                 pass
-            elif i+XLENGTH+1 > length:  # This stops vertices at the edge from rendering triangles - this previously led to triangles being rendered across the entire map
+            elif i+XLENGTH+1 > length:  # This stops vertices at the edge from rendering triangles
+            # this previously led to triangles being rendered across the entire map before fix
                 pass
             elif i%XLENGTH == XLENGTH-1:    # Same as above but for other edge
                 pass
@@ -357,17 +370,20 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
                 if (mapMatrix[i][2]-camPositionz) < 0:
                     bearing = 360-bearing
 
-                # If the vertice is more than 100 degrees away from the yaw, do not render. Also renders every tile if looking straight down, to preserve illusion
+                # If the vertice is more than 100 degrees away from the yaw, do not render.
+                # Also renders every tile if looking straight down, to preserve illusion
                 if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0 and pitch>-75:
                     pass
 
                 else:
                     # The two triangles adjacent to any vertex
-                    if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.3:  # This is only true if all three corners are at sea level
+                    if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.3:
+                        # This is only true if all three corners are at sea level
                         verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[0]))
                     else:
                         verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[2*i+1]))
-                    if mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == mapMatrix[i+XLENGTH+1][1] == 0.3:    # This is only true if all three corners are at sea level
+                    if mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == mapMatrix[i+XLENGTH+1][1] == 0.3:
+                        # This is only true if all three corners are at sea level
                         verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[0]))
                     else:
                         verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[2*i+2]))
@@ -454,7 +470,9 @@ def main(collectDataPermission):
             text(0, 930, (1, 0, 0), "Position: " + str(mainCam.getPos().val))
 
             # Generate the visible terrain
-            verticelist, colCheck = genTerrain(mapMatrix, coloursList, *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
+            verticelist, colCheck = genTerrain(mapMatrix, coloursList,
+            *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
+            
             renderTriangle(verticelist)
             checkforcollision(colCheck, mainCam)
 

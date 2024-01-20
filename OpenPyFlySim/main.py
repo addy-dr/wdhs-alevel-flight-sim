@@ -42,12 +42,14 @@ class Checkbox(Button):
             pygame.draw.rect(self._screen,self._light,[self._x,self._y,self._w,self._h])
             pygame.draw.rect(self._screen,(0,0,0),[self._x+10,self._y+10,self._w-20,self._h-20])
             if self.flag:
-                pygame.draw.rect(self._screen,self._light,[self._x+20,self._y+20,self._w-40,self._h-40]) 
+                pygame.draw.rect(self._screen,self._light,
+                [self._x+20,self._y+20,self._w-40,self._h-40]) 
         else: 
             pygame.draw.rect(self._screen,self._dark,[self._x,self._y,self._w,self._h])
             pygame.draw.rect(self._screen,(0,0,0),[self._x+10,self._y+10,self._w-20,self._h-20])
             if self.flag:
-                pygame.draw.rect(self._screen,self._dark,[self._x+20,self._y+20,self._w-40,self._h-40])
+                pygame.draw.rect(self._screen,self._dark,
+                [self._x+20,self._y+20,self._w-40,self._h-40])
 
     def checkForClick(self,mouse):
         if self._x <= mouse[0] <= self._x+self._w and self._y <= mouse[1] <= self._y+self._h:
