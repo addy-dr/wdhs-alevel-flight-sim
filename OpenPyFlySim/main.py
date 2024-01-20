@@ -41,8 +41,8 @@ class Camera:
     up = Vector3([0, 1, 0]) # Global definition of 'up' independent of the camera
     # Note that with Vector3, we must define all our numbers to be an ARRAY (not list) where each number is a 64 bit float
 
-    def __init__(self, position):
-        self.__eulerAngles = Vector3([0,0,0])   # yaw, pitch, roll
+    def __init__(self, position, takenOff):
+        self.__eulerAngles = Vector3([270,0,0])   # yaw, pitch, roll
         self.__eulerAngularVelocity = Vector3([0,0,0])  # yaw, pitch, roll
         self.__position = Vector3(position)    # x, y ,z
         self.__velocity = Vector3([0, 0, 0])
@@ -54,9 +54,13 @@ class Camera:
         self.__angleofattack = 0
         self.__climbangle = 0
         self.__thrust = 0
+        self.__throttlePercent = 0
+        self.__POWER = 754.7 * 140 #in watts, based on horsepower measurement in document
 
-        self.__mass = 1100
-        self.__wingArea = 17
+        self.__MASS = 1100
+        self.__WINGAREA = 17
+
+        self.__takeOffFlag = takenOff
 
     def getPos(self):
         return self.__position
@@ -71,7 +75,6 @@ class Camera:
     def update(self, keys, deltaTime):
         "Handles the lookat system and camera movement"
 
-        speed = 0.2
         direction = Vector3([0, 1, 0])
 
         # Camera direction
@@ -179,14 +182,25 @@ class Camera:
 
         # Thrust
         if keys[K_z]:
-            self.__thrust += 100
+            self.__throttlePercent += 1
         if keys[K_x]:
-            self.__thrust -= 100
+            self.__throttlePercent -= 1
 
-        if self.__thrust > 15000:
-            self.__thrust = 15000
-        if self.__thrust < 0:
-            self.__thrust = 0
+        if self.__throttlePercent > 100:
+            self.__throttlePercent = 100
+        if self.__throttlePercent < 0:
+            self.__throttlePercent = 0
+
+        # Based on formula P = Fv:
+        try:
+            self.__thrust = (self.__POWER / self.__velocity.magnitude()) * self.__throttlePercent/100
+            if self.__thrust > 15000: # Set upper cap for thrust
+                self.__thrust = 15000
+        except ZeroDivisionError:
+            if self.__throttlePercent > 0:
+                self.__thrust = 20 # Small thrust so that we can actually get out of zero velocity
+            else:
+                self.__thrust = 0 # In case we are perfectly still
 
         self.__resolveForces(deltaTime)
 
@@ -202,7 +216,14 @@ class Camera:
 
         newPos = []
         for i in range(3):  # 3 values in a Vector3
-            newPos.append(self.__position.val[i]+self.__velocity.val[i]*0.001*deltaTime) #moves the plane, reduces scale by 10000x
+            if i == 1 and not self.__takeOffFlag:
+                if self.__velocity.val[i] <= 0.1:
+                    newPos.append(self.__position.val[i])
+                else:
+                    self.__takeOffFlag = True
+                    newPos.append(self.__position.val[i]+self.__velocity.val[i]*0.001*deltaTime)
+            else:
+                newPos.append(self.__position.val[i]+self.__velocity.val[i]*0.001*deltaTime) #moves the plane, reduces scale by 100x
         self.__position.setVal(newPos)
 
         glLoadIdentity()    # As per explanation in https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
@@ -211,7 +232,7 @@ class Camera:
         text(0, 960, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude())/(9.81)))
         text(0, 990, (1, 0, 0), "Velocity: "+str(self.__velocity.magnitude()))
         text(0, 1020, (1, 0, 0), "Acceleration: "+str(self.__acceleration.magnitude()))
-        text(0, 900, (1, 0, 0), "Throttle: "+str(round(self.__thrust/15000*100))+'%')
+        text(0, 900, (1, 0, 0), "Throttle: "+str(round((self.__thrust/2000)*100))+'%')
 
     def __resolveForces(self, deltaTime):
 
@@ -229,8 +250,8 @@ class Camera:
             self.__angleofattack = 0.25 * round(self.__angleofattack*4) # Rounds to closest 0.25
             c_l, c_d = naca2412_airfoil[str(self.__angleofattack)]  # Get angle of attack coefficent values from database
 
-        lift = 0.5 * Vector3.dot(self.__velocity,self.__front)**2  * self.__wingArea * c_l * 1.2 # 1.2 is the density of air
-        drag = 0.5 * self.__velocity.magnitude()**2  * self.__wingArea * c_d * 1.2
+        lift = 0.5 * Vector3.dot(self.__velocity,self.__front)**2  * self.__WINGAREA * c_l * 1.2 # 1.2 is the density of air
+        drag = 0.5 * self.__velocity.magnitude()**2  * self.__WINGAREA * c_d * 1.2
 
         if lift > 15000: # Set upper cap for lift in case of bug
             lift = 15000
@@ -240,24 +261,27 @@ class Camera:
         self.__angleofattack = math.radians(self.__angleofattack)
         self.__climbangle = math.radians(self.__climbangle)
 
-        vertical = (self.__thrust-drag) * abs(math.sin(self.__climbangle)) + lift * math.cos(self.__climbangle) - 9.81*self.__mass
+        vertical = (self.__thrust-drag) * abs(math.sin(self.__climbangle)) + lift * math.cos(self.__climbangle) - 9.81*self.__MASS
         horizontal = (self.__thrust-drag) * math.cos(self.__climbangle) - lift * math.sin(self.__climbangle) 
 
+        text(0, 600, (1, 0, 0), str(self.__velocity.val))
+        text(0, 500, (1, 0, 0), str(self.__acceleration.val))
+        text(0, 400, (1, 0, 0), str(self.__eulerAngles.val))
 
         if self.__velocity.val[0] * self.__acceleration.val[0] > 0 and horizontal < 0:  # Drag would cause acceleration instead of deceleration if this is true.
             horizontal = 0
 
         if self.__thrust < drag:    # Act against velocity to slow down plane. If removed, causes infinite acceleration due to "drag" in the opposite way the plane is facing when 0 thrust
             self.__acceleration = Vector3([ # x y z
-                (horizontal*deltaTime*self.__velocity.normalise().val[0])/self.__mass,
-                (vertical*deltaTime)/self.__mass,
-                (horizontal*deltaTime*self.__velocity.normalise().val[2])/self.__mass
+                (horizontal*self.__velocity.normalise().val[0])/self.__MASS,
+                (vertical)/self.__MASS,
+                (horizontal*self.__velocity.normalise().val[2])/self.__MASS
             ])
         else:
             self.__acceleration = Vector3([ # x y z
-                (horizontal*deltaTime*self.__front.val[0])/self.__mass,
-                (vertical*deltaTime)/self.__mass,
-                (horizontal*deltaTime*self.__front.val[2])/self.__mass
+                (horizontal*self.__front.val[0])/self.__MASS,
+                (vertical)/self.__MASS,
+                (horizontal*self.__front.val[2])/self.__MASS
             ])
 
         return 1
@@ -384,7 +408,7 @@ def main(collectDataPermission):
     display = (1920, 1080)
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
-    mainCam = Camera((231,4,476))   # Position
+    mainCam = Camera((231,0.8,450), False)   # Position
     glClearColor(25/255, 235/225, 235/225, 0)   # Sets the colour of the "sky"
 
     glMatrixMode(GL_PROJECTION)
