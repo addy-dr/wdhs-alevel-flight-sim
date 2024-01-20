@@ -5,8 +5,10 @@ import math
 
 ### THIS IS A MODULE MOSTLY CONSISTING OF CLASSES AND FUNCTIONS USED IN THE OTHER FILES
 
-@jitclass([("__values", float64[::1])]) # Define __values to be a list of contiguous floats
-class Vector3():    # Define a class for 3d vectorss
+# Define __values to be a list of contiguous floats:
+@jitclass([("__values", float64[::1])])
+class Vector3():
+    "Defines a class for 3d vectors"
     # Class methods don't work with JIT
     @staticmethod
     def addVectors(vectorA, vectorB):
@@ -14,7 +16,8 @@ class Vector3():    # Define a class for 3d vectorss
         result = []
         for i in range(3):
             result.append(vectorA.val[i]+vectorB.val[i])
-        return Vector3(result)  # Returns a vector with the summed values as its instantiation inputs
+        # Returns a vector with the summed values as its instantiation inputs
+        return Vector3(result)
     
     @staticmethod
     def subtractVectors(vectorA, vectorB):
@@ -22,7 +25,8 @@ class Vector3():    # Define a class for 3d vectorss
         result = []
         for i in range(3):
             result.append(vectorA.val[i]-vectorB.val[i])
-        return Vector3(result)  # Returns a vector with the summed values as its instantiation inputs
+        # Returns a vector with the summed values as its instantiation inputs
+        return Vector3(result)
     
     @staticmethod
     def dot(vectorA, vectorB):
@@ -36,15 +40,19 @@ class Vector3():    # Define a class for 3d vectorss
     def cross(vectorA, vectorB):
         "Static method to cross product two vectors"
         result = []
-        for t in [(1,2),(2,0),(0,1)]:   # Based on mathematical definition of cross product
-            result.append(vectorA.val[t[0]]*vectorB.val[t[1]] - vectorA.val[t[1]]*vectorB.val[t[0]])
-        return Vector3(result)  # Returns a vector with the cross product as its instantiation inputs
+        for t in [(1,2),(2,0),(0,1)]:
+            # Based on mathematical definition of cross product:
+            result.append(vectorA.val[t[0]]*vectorB.val[t[1]]
+            - vectorA.val[t[1]]*vectorB.val[t[0]])
+        # Returns a vector with the cross product as its instantiation inputs
+        return Vector3(result)
     
     def __init__(self, arg):
-        #Note: In order to work with the vector3 function, we must pass in a numpy array with a defined data type of float64 for all values.
+        #Note: In order to work with the vector3 function,
+        # we must pass in a numpy array with a defined data type of float64 for all values.
         self.__values = np.array(arg, dtype=np.float64)
 
-    @property   # Decorator marks this as being a property. This is just a getter function so this is appropriate
+    @property   # Turns this into a getter method
     def val(self):
         "Return value"
         return self.__values
@@ -66,14 +74,15 @@ class Vector3():    # Define a class for 3d vectorss
     
     def magnitude(self):
         "Returns magnitude"
-        return (self.__values[0]**2 + self.__values[1]**2 + self.__values[2]**2)**(0.5)
+        return (self.__values[0]**2 + self.__values[1]**2 +
+        self.__values[2]**2)**(0.5)
     
     def setAt(self, n, val):
         "Sets the value of the varable at n to val"
         self.__values[n] = val
     
     def normalise(self):
-        "Normalises vectors. Since we can't import our zero vector into here since it uses a numpy definition, we need to set a fallback whenever we call this function instead."
+        """Normalises vectors."""
         magnitude = self.magnitude()
         if magnitude == 0:
             return Vector3([0,0,0])
@@ -83,7 +92,8 @@ class Vector3():    # Define a class for 3d vectorss
                 self.val[1] / magnitude,
                 self.val[2] / magnitude])
 
-def rotate(vector, axis, theta):    # vector3,vector3,float (radians)
+# vector3,vector3,float (radians)
+def rotate(vector, axis, theta):
     "Rotates one vector around another using the Euler-Rodrigues formula"
     a = math.cos(theta/2)
     omega = Vector3([
@@ -103,7 +113,8 @@ def getDatafileData(variable):
     
     for string in lines:
         try:
-            start = string.index(variable) + len(variable) + 1  # Plus one because of equals sign
+            # Plus one because of equals sign
+            start = string.index(variable) + len(variable) + 1
             return string[start:]
         except ValueError:
             pass
@@ -117,16 +128,21 @@ def writeDatafileData(variable, content):
     for string in lines:
         try:
             start = string.index(variable) + len(variable) + 1
-            newline = string[:start]+str(content)   # Replace the old content with the new parameter
+            # Replace the old content with the new parameter:
+            newline = string[:start]+str(content)
             replacedline = lines.index(string)
         except ValueError:
             pass
     newfile = ""
     for i in range(len(lines)):
         if i == replacedline:
-            newfile+=(newline+"\n") # Replace previous item on this line with the new modified one
+            # Replace previous item on this line with the new modified one
+            newfile+=(newline)
         else:
-            newfile+=(lines[i]+"\n")
+            newfile+=(lines[i])
+        if i != len(lines):
+            #write a new line, except on last line
+            newfile+='\n'
 
     with open("datafile.txt", "w") as f:
         f.write(newfile)

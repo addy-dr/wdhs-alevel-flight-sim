@@ -3,9 +3,13 @@ import json
 
 def main():
     host = '0.0.0.0'
-    port = 12306 #can be any number not in use. Make sure to update datafile.txt though
 
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #use ipv4 and tcp
+    #can be any number not in use. Make sure to update datafile.txt though
+    port = 12306
+
+    server_socket = socket.socket(socket.AF_INET,
+    socket.SOCK_STREAM) #use ipv4 and tcp
+    
     server_socket.bind((host, port))
     server_socket.listen(5)  # Allow up to 5 queued connections
 

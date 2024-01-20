@@ -164,9 +164,12 @@ class Camera:
         self.__eulerAngles.setAt(0,self.__eulerAngles.val[0] % 360) # Keep yaw within the bounds
 
         # From drawing trigonemtric diagrams:
-        direction.setVal([math.cos(math.radians(self.__eulerAngles.val[0]))*math.cos(math.radians(self.__eulerAngles.val[1])),
+        direction.setVal([math.cos(math.radians(self.__eulerAngles.val[0]))
+        * math.cos(math.radians(self.__eulerAngles.val[1])),
         math.sin(math.radians(self.__eulerAngles.val[1])),
-        math.sin(math.radians(self.__eulerAngles.val[0])) * math.cos(math.radians(self.__eulerAngles.val[1]))])
+        math.sin(math.radians(self.__eulerAngles.val[0]))
+        * math.cos(math.radians(self.__eulerAngles.val[1]))])
+
         self.__front = direction.normalise()    # Get the front normalised vector
         self.__right = (Vector3.cross(Camera.up, self.__front)).normalise()
         self.__right = rotate(self.__right, self.__front, math.radians(self.__eulerAngles.val[2]))  # Rotate right around front by roll
@@ -350,7 +353,8 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
     length = len(mapMatrix)
     try:
         for i in range(length):                   
-            if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) > RENDER_DISTANCE:    # Only renders triangles within the render distance
+            if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) > RENDER_DISTANCE:
+                # Only renders triangles within the render distance
                 pass
             elif i+XLENGTH+1 > length:  # This stops vertices at the edge from rendering triangles
             # this previously led to triangles being rendered across the entire map before fix
@@ -360,7 +364,8 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
             else:
                 if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) < 1:  # Check for collision
                     collisionCheckList.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH]))
-                    collisionCheckList.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1]))
+                    collisionCheckList.append((mapMatrix[i+1]
+                    mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1]))
 
                 if (mapMatrix[i][0]-camPositionx) < 0:  # Calculate the bearing of the vertice from the x axis
                     bearing = 180 - abs(arctan((mapMatrix[i][2]-camPositionz)/(mapMatrix[i][0]-camPositionx)))
@@ -379,14 +384,18 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
                     # The two triangles adjacent to any vertex
                     if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.3:
                         # This is only true if all three corners are at sea level
-                        verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[0]))
+                        verticelist.append((mapMatrix[i+1],mapMatrix[i],
+                        mapMatrix[i+XLENGTH],coloursList[0]))
                     else:
-                        verticelist.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH],coloursList[2*i+1]))
+                        verticelist.append((mapMatrix[i+1],mapMatrix[i],
+                        mapMatrix[i+XLENGTH],coloursList[2*i+1]))
                     if mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == mapMatrix[i+XLENGTH+1][1] == 0.3:
                         # This is only true if all three corners are at sea level
-                        verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[0]))
+                        verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],
+                        mapMatrix[i+XLENGTH+1],coloursList[0]))
                     else:
-                        verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1],coloursList[2*i+2]))
+                        verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],
+                        mapMatrix[i+XLENGTH+1],coloursList[2*i+2]))
     except Exception:   # Invalid triangle, avoid crashing and dont render it instead
         pass
     return verticelist, collisionCheckList
@@ -472,7 +481,7 @@ def main(collectDataPermission):
             # Generate the visible terrain
             verticelist, colCheck = genTerrain(mapMatrix, coloursList,
             *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
-            
+
             renderTriangle(verticelist)
             checkforcollision(colCheck, mainCam)
 
@@ -483,6 +492,7 @@ def main(collectDataPermission):
             print("An error has ocurred.")
             if collectDataPermission:
                 generateLog(err, traceback.format_exc(),
-                            [mainCam.getPos().val, mainCam.getDir().val, timeTaken, currTime, verticelist, colCheck])
+                            [mainCam.getPos().val, mainCam.getDir().val,
+                            timeTaken, currTime, verticelist, colCheck])
             pg.quit()
             quit()
