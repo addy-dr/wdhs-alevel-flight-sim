@@ -27,7 +27,7 @@ def generateLog(exceptiontype, traceback, variables):
         "traceback": str(traceback),
         "variables": str(variables),
         "usertext": userText,
-        "checksum": checksum("main.py"),
+        "checksum": checksum("flight_sim.py"),
         "systemDetails": systemDetails,
         "logchecksum": "",
         "sent": 0 # Determines whether the log has been sent to the developers
