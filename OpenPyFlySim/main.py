@@ -384,7 +384,7 @@ def main(collectDataPermission):
     display = (1920, 1080)
     screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
-    mainCam = Camera((250,4,250))   # Position
+    mainCam = Camera((231,4,476))   # Position
     glClearColor(25/255, 235/225, 235/225, 0)   # Sets the colour of the "sky"
 
     glMatrixMode(GL_PROJECTION)
