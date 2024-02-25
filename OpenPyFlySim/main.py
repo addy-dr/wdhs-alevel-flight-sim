@@ -12,7 +12,7 @@ class Button:
         self._w = w # width
         self._h = h # height
 
-        self._light = (170,170,170) 
+        self._light = (170,170,170)
         self._dark = (100,100,100)
 
         self._screen = screen   # Pointer to the screen
@@ -20,8 +20,8 @@ class Button:
 
     def render(self, mouse):
         if self._x <= mouse[0] <= self._x+self._w and self._y <= mouse[1] <= self._y+self._h:
-            pygame.draw.rect(self._screen,self._light,[self._x,self._y,self._w,self._h]) 
-        else: 
+            pygame.draw.rect(self._screen,self._light,[self._x,self._y,self._w,self._h])
+        else:
             pygame.draw.rect(self._screen,self._dark,[self._x,self._y,self._w,self._h])
 
         self._screen.blit(self._text, (self._x+90, self._y+55))
@@ -43,8 +43,8 @@ class Checkbox(Button):
             pygame.draw.rect(self._screen,(0,0,0),[self._x+10,self._y+10,self._w-20,self._h-20])
             if self.flag:
                 pygame.draw.rect(self._screen,self._light,
-                [self._x+20,self._y+20,self._w-40,self._h-40]) 
-        else: 
+                [self._x+20,self._y+20,self._w-40,self._h-40])
+        else:
             pygame.draw.rect(self._screen,self._dark,[self._x,self._y,self._w,self._h])
             pygame.draw.rect(self._screen,(0,0,0),[self._x+10,self._y+10,self._w-20,self._h-20])
             if self.flag:
@@ -67,7 +67,7 @@ def menu():
         crash_handler.sendErrorLogs()
     except:
         print("Servers offline.")
-    pygame.init() 
+    pygame.init()
 
     width = 1500
     height = 1000
@@ -97,17 +97,17 @@ def menu():
     # Map of the game world
     mapImg = pygame.image.load("colourmap.bmp").convert()
     
-    while True:     
-        for event in pygame.event.get(): 
+    while True:
+        for event in pygame.event.get():
             
-            if event.type == pygame.QUIT: 
+            if event.type == pygame.QUIT:
                 pygame.quit()
                 
-            #   Checks if a mouse is clicked 
-            if event.type == pygame.MOUSEBUTTONDOWN: 
+            #   Checks if a mouse is clicked
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 
                 #   This option starts the game
-                if buttonA.checkForClick(mouse): 
+                if buttonA.checkForClick(mouse):
                     pygame.quit()
                     if checkBox.flag: #save state of checkbox
                         binary_bool = 1
@@ -117,7 +117,7 @@ def menu():
                     flight_sim.main(checkBox.flag)
 
                 #   This option closes the launcher
-                if buttonB.checkForClick(mouse): 
+                if buttonB.checkForClick(mouse):
                     if checkBox.flag: #save state of checkbox
                         binary_bool = 1
                     else:
@@ -127,8 +127,8 @@ def menu():
 
                 checkBox.checkForClick(mouse)   # Toggles the checkbox
                     
-        screen.fill((0,0,0)) 
-        mouse = pygame.mouse.get_pos() 
+        screen.fill((0,0,0))
+        mouse = pygame.mouse.get_pos()
         
         buttonA.render(mouse)
         buttonB.render(mouse)
@@ -142,7 +142,7 @@ def menu():
 
         screen.blit(mapImg, (100, 220))
 
-        pygame.display.update() 
+        pygame.display.update()
 
 if __name__ == "__main__":
     menu()
