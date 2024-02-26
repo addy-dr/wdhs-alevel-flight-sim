@@ -69,8 +69,8 @@ class Camera:
         return self.__position
 
     def getXZ(self):
-        "Relevant as determining the position of the plane on a 2d
-        # coordinate map will only require XZ coordinates, Y is irrelevant"
+        """Relevant as determining the position of the plane on a 2d
+        coordinate map will only require XZ coordinates, Y is irrelevant"""
         return [self.__position.val[0], self.__position.val[2]]
 
     def getDir (self):
@@ -364,7 +364,7 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
             else:
                 if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) < 1:  # Check for collision
                     collisionCheckList.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH]))
-                    collisionCheckList.append((mapMatrix[i+1]
+                    collisionCheckList.append((mapMatrix[i+1],
                     mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1]))
 
                 if (mapMatrix[i][0]-camPositionx) < 0:  # Calculate the bearing of the vertice from the x axis
