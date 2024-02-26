@@ -30,10 +30,6 @@ print("Packages successfully loaded.")
 heightmap = np.array(Image.open('heightmap.bmp'))
 colourmap = np.array(Image.open('colourmap.bmp'))
 watermask = np.array(Image.open('watermask.bmp'))
-with open("NACA2412.json", "r+") as f:
-    # Produced using the Xfoil program from .dat files freely available at
-    # http://airfoiltools.com/airfoil/details?airfoil=naca2412-il
-    naca2412_airfoil = json.load(f)[1]
 # Map size
 ZLENGTH = len(heightmap)
 XLENGTH = len(heightmap[0])
@@ -58,10 +54,16 @@ class Camera:
         self.__climbangle = 0
         self.__thrust = 0
         self.__throttlePercent = 0
-        self.__POWER = 754.7 * 140 #in watts, based on horsepower measurement in document
 
-        self.__MASS = 1100
-        self.__WINGAREA = 17
+        # get data
+        with open("planedata.json", "r+") as f:
+            # Produced using the Xfoil program from .dat files freely available at
+            # http://airfoiltools.com/airfoil/details?airfoil=naca2412-il
+            plane_data = json.load(f)
+        self.__airfoil = plane_data[1]
+        self.__POWER = 754.7 * plane_data[0][0] #in watts, based on horsepower measurement in document
+        self.__MASS = plane_data[0][1]
+        self.__WINGAREA = plane_data[0][2]
 
         self.__takeOffFlag = takenOff
 
@@ -200,7 +202,7 @@ class Camera:
         self.__resolveForces(deltaTime)
 
         # Accelerate the velocity. Make sure the value on the axes doesnt surpass 40ms⁻1,
-        # which is the hardcoded limit (prevents infinite velocity from acceleration in case of drag not working)
+        # which is the hardcoded limit (prevents infinite velocity from acceleration in case of drag bugging out)
         for i in range(0,3):
             newVelocity = self.__velocity.val[i]+self.__acceleration.val[i]
             if i == 1 and not self.__takeOffFlag:   # Code triggered if you haven't taken off yet
@@ -223,7 +225,6 @@ class Camera:
         glLoadIdentity()    # As per explanation in https://stackoverflow.com/questions/54316746/using-glulookat-causes-the-objects-to-spin
         gluLookAt(*self.__position.val, *Vector3.addVectors(self.__position, self.__front).val, *self.__up.val)
 
-        text(0, 960, (1, 0, 0), "G-Force: "+str((self.__acceleration.magnitude()+9.81)/(9.81))) # g-force = (a+g)/g
         text(0, 990, (1, 0, 0), "Velocity: "+str(self.__velocity.magnitude()))
         text(0, 1020, (1, 0, 0), "Acceleration: "+str(self.__acceleration.magnitude()))
         text(0, 900, (1, 0, 0), "Throttle: "+str(round((self.__throttlePercent)))+'%')
@@ -240,10 +241,10 @@ class Camera:
             ))  # Via trigonemtry. 
         
         if abs(self.__angleofattack) > 14.5:
-            c_l, c_d = naca2412_airfoil["14.75"]
+            c_l, c_d = self.__airfoil["14.75"]
         else:
             self.__angleofattack = 0.25 * round(self.__angleofattack*4) # Rounds to closest 0.25
-            c_l, c_d = naca2412_airfoil[str(self.__angleofattack)]  # Get angle of attack coefficent values from database
+            c_l, c_d = self.__airfoil[str(self.__angleofattack)]  # Get angle of attack coefficent values from database
 
         # 1.2 is the density of air. velocity must be in the direction of front
         lift = 0.5 * Vector3.dot(self.__velocity,self.__front)**2  * self.__WINGAREA * c_l * 1.2
@@ -281,15 +282,15 @@ class Camera:
 
         return 1
     
-def checkforcollision(triangles, Camera):
-    for triangle in triangles:
-        p1 = Vector3(list(triangle[0]))
-        p2 = Vector3(list(triangle[1]))
-        p3 = Vector3(list(triangle[2]))
-        normal = Vector3.cross(Vector3.subtractVectors(p2,p1),
-                               Vector3.subtractVectors(p3,p1))
-        if Vector3.dot(normal, Camera.getPos()) <= Vector3.dot(normal, p1):
-            text(800, 1000, (1, 0, 0), "CRASHED!")
+    def checkforcollision(self, triangles):
+        for triangle in triangles:
+            p1 = Vector3(list(triangle[0]))
+            p2 = Vector3(list(triangle[1]))
+            p3 = Vector3(list(triangle[2]))
+            normal = Vector3.cross(Vector3.subtractVectors(p2,p1),
+                                Vector3.subtractVectors(p3,p1))
+            if Vector3.dot(normal, self.getPos()) <= Vector3.dot(normal, p1):
+                text(800, 1000, (1, 0, 0), "CRASHED!")
 
 def mapGen(heightmap, colourmap, watermask):
     # Create our matrix for both the surface and the colours
@@ -322,18 +323,16 @@ def mapGen(heightmap, colourmap, watermask):
                 coloursList.append(pixelColour)
     return np.array(vertList), np.array(coloursList)
 
-def triThreePoints(p1,p2,p3,c):
-    glColor3fv(c)
-    glVertex3fv(p1)
-    glVertex3fv(p2)
-    glVertex3fv(p3)
-
 def renderTriangle(vertices):
     "Renders a mesh of triangles based on the coords inputted"
     # Format of each entry: vertex 1, vertex 2, vertex 3, colour
     glBegin(GL_TRIANGLES)
     while vertices != []:
-        triThreePoints(*vertices.pop())
+        p1,p2,p3,c = vertices.pop()
+        glColor3fv(c)
+        glVertex3fv(p1)
+        glVertex3fv(p2)
+        glVertex3fv(p3)
     glEnd()
 
 # We need to import all of these variables because numba won't know about them
@@ -362,7 +361,8 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
             elif i%XLENGTH == XLENGTH-1:    # Same as above but for other edge
                 pass
             else:
-                if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) < 1:  # Check for collision
+                # Check these for collision (close to plane)
+                if ((camPositionx-mapMatrix[i][0])**2 + (camPositionz-mapMatrix[i][2])**2)**(1/2) < 1:
                     collisionCheckList.append((mapMatrix[i+1],mapMatrix[i],mapMatrix[i+XLENGTH]))
                     collisionCheckList.append((mapMatrix[i+1],
                     mapMatrix[i+XLENGTH],mapMatrix[i+XLENGTH+1]))
@@ -377,18 +377,20 @@ def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
 
                 # If the vertice is more than 100 degrees away from the yaw, do not render.
                 # Also renders every tile if looking straight down, to preserve illusion
-                if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0 and pitch>-75:
+                if abs(bearing-yaw) > 100 and abs(bearing-yaw) < 280 and bearing>0 and pitch>-30:
                     pass
 
                 else:
-                    # The two triangles adjacent to any vertex
+                    # Repeat twice as two triangles associated with each vertex
                     if mapMatrix[i][1] == mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == 0.3:
                         # This is only true if all three corners are at sea level
+                        # so render with ocean colour
                         verticelist.append((mapMatrix[i+1],mapMatrix[i],
                         mapMatrix[i+XLENGTH],coloursList[0]))
                     else:
                         verticelist.append((mapMatrix[i+1],mapMatrix[i],
                         mapMatrix[i+XLENGTH],coloursList[2*i+1]))
+
                     if mapMatrix[i+1][1] == mapMatrix[i+XLENGTH][1] == mapMatrix[i+XLENGTH+1][1] == 0.3:
                         # This is only true if all three corners are at sea level
                         verticelist.append((mapMatrix[i+1],mapMatrix[i+XLENGTH],
@@ -407,7 +409,6 @@ def text(x, y, color, text):
     glutBitmapString(GLUT_BITMAP_HELVETICA_18, text.encode('ascii'))
 
 def main(collectDataPermission):
-
     pg.init()
     pg.font.init()
     glutInit()
@@ -483,7 +484,7 @@ def main(collectDataPermission):
             *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
 
             renderTriangle(verticelist)
-            checkforcollision(colCheck, mainCam)
+            mainCam.checkforcollision(colCheck)
 
             pg.display.flip() # Update window with active buffer contents
             pg.time.wait(10) # Prevents frames from being rendered instantly
