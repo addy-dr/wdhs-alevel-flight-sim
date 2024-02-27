@@ -337,7 +337,7 @@ def renderTriangles(vertices):
 
 # We need to import all of these variables because numba won't know about them
 @njit
-def genTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
+def getTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
     verticelist, collisionCheckList = [], []
     # We define an inner function so we can calculate arctan.
     # This is since we can't import math or numpy into this njit func.
@@ -480,7 +480,7 @@ def main(collectDataPermission):
             text(0, 930, (1, 0, 0), "Position: " + str(mainCam.getPos().val))
 
             # Generate the visible terrain
-            verticelist, colCheck = genTerrain(mapMatrix, coloursList,
+            verticelist, colCheck = getTerrain(mapMatrix, coloursList,
             *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
 
             renderTriangles(verticelist)
