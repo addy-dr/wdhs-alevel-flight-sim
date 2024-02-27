@@ -323,7 +323,7 @@ def mapGen(heightmap, colourmap, watermask):
                 coloursList.append(pixelColour)
     return np.array(vertList), np.array(coloursList)
 
-def renderTriangle(vertices):
+def renderTriangles(vertices):
     "Renders a mesh of triangles based on the coords inputted"
     # Format of each entry: vertex 1, vertex 2, vertex 3, colour
     glBegin(GL_TRIANGLES)
@@ -483,7 +483,7 @@ def main(collectDataPermission):
             verticelist, colCheck = genTerrain(mapMatrix, coloursList,
             *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
 
-            renderTriangle(verticelist)
+            renderTriangles(verticelist)
             mainCam.checkforcollision(colCheck)
 
             pg.display.flip() # Update window with active buffer contents
