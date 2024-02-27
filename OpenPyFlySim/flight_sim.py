@@ -476,15 +476,15 @@ def main(collectDataPermission):
             keys = pg.key.get_pressed()
             mainCam.update(keys, (1/timeTaken))
 
-            text(0, 1050, (1, 0, 0), str(round(timeTaken,1))+' FPS')
-            text(0, 930, (1, 0, 0), "Position: " + str(mainCam.getPos().val))
-
             # Generate the visible terrain
             verticelist, colCheck = getTerrain(mapMatrix, coloursList,
             *mainCam.getXZ(), mainCam.getDir().val[0], mainCam.getDir().val[1])
 
             renderTriangles(verticelist)
             mainCam.checkforcollision(colCheck)
+
+            text(0, 1050, (1, 0, 0), str(round(timeTaken,1))+' FPS')
+            text(0, 930, (1, 0, 0), "Position: " + str(mainCam.getPos().val))
 
             pg.display.flip() # Update window with active buffer contents
             pg.time.wait(10) # Prevents frames from being rendered instantly
