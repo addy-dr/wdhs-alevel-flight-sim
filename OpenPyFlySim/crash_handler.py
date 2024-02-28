@@ -8,12 +8,14 @@ from maths_module import getDatafileData
 host = getDatafileData("serverIP")
 port = getDatafileData("host")
 
-def checksum(file):
+def checksum(fileList):
     """Used to generate checksums. 
     Lets us know if code was tampered with."""
-    with open(file, "rb") as f: #   rb = read in binary mode
+    for file in fileList:
+        with open(file, "rb") as f: #   rb = read in binary mode
+            sourceCode += str(f.read())
         # returns hash
-        return hashlib.md5(str(f.read()).encode("utf")).hexdigest()
+        return hashlib.md5(sourceCode.encode("utf")).hexdigest()
 
 def generateLog(exceptiontype, traceback, variables):
 
@@ -32,7 +34,7 @@ def generateLog(exceptiontype, traceback, variables):
         "traceback": str(traceback),
         "variables": str(variables),
         "usertext": userText,
-        "checksum": checksum("flight_sim.py"),
+        "checksum": checksum("flight_sim.py")+checksum("planedata.json")+checksum("colourmap.bmp"),
         "systemDetails": systemDetails,
         "logchecksum": "",
         "sent": 0 # Determines whether the log has been sent to the developers
@@ -69,6 +71,7 @@ def sendFile(filepath):
         response = connection.recv(1024).decode()
         if response == "accepted":
             log["sent"] = 1 # Marks as sent
+            print("Successful transmission")
             with open(filepath, 'w') as f:
                 # Rewrites the file with the new data
                 json.dump(log, f)

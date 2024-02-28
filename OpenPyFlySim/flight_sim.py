@@ -88,16 +88,16 @@ class Camera:
         if keys[K_w]:   # Yaw: rudder
             if self.__eulerAngularVelocity.val[0] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0.005, 0, 0], dtype=np.float64))
-            text(1650, 1020, (1, 0, 0), "RUDDER: LEFT")
+            text(1650, 1020, (1, 0, 0), "(W-S) RUDDER: LEFT")
         elif keys[K_s]:
             if self.__eulerAngularVelocity.val[0] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([-0.005, 0, 0], dtype=np.float64))
-            text(1650, 1020, (1, 0, 0), "RUDDER: RIGHT")
+            text(1650, 1020, (1, 0, 0), "(W-S) RUDDER: RIGHT")
         else:   # Rudder is neutral
-            text(1650, 1020, (1, 0, 0), "RUDDER: NEUTRAL")
+            text(1650, 1020, (1, 0, 0), "(W-S) RUDDER: NEUTRAL")
             if abs(self.__eulerAngularVelocity.val[0]) < 0.1:
                 # Prevent jittery motion from overshooting equilibrium
-               self.__eulerAngularVelocity.setAt(0,0) 
+               self.__eulerAngularVelocity.setAt(0,0)
             elif self.__eulerAngularVelocity.val[0] < 0:
                 self.__eulerAngularVelocity.addVal(np.array([0.02, 0, 0], dtype=np.float64))
             else:
@@ -106,13 +106,13 @@ class Camera:
         if keys[K_e]:   # Pitch: elevator
             if self.__eulerAngularVelocity.val[1] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0.005, 0], dtype=np.float64))
-            text(1650, 990, (1, 0, 0), "ELEVATOR: UP")
+            text(1650, 990, (1, 0, 0), "(E-D) ELEVATOR: UP")
         elif keys[K_d]:
             if self.__eulerAngularVelocity.val[1] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([0, -0.005, 0], dtype=np.float64))
-            text(1650, 990, (1, 0, 0), "ELEVATOR: DOWN")
+            text(1650, 990, (1, 0, 0), "(E-D) ELEVATOR: DOWN")
         else:   # Elevator is neutral
-            text(1650, 990, (1, 0, 0), "ELEVATOR: NEUTRAL")
+            text(1650, 990, (1, 0, 0), "(E-D) ELEVATOR: NEUTRAL")
         
             if abs(self.__eulerAngularVelocity.val[1]) < 0.1:
                 # Prevents de-acceleration of pitch from overshooting itself
@@ -124,15 +124,15 @@ class Camera:
         
         # Ailerons: If both active in opposite directions, rotate.
         if keys[K_a]:   # Clockwise
-            text(1650, 960, (1, 0, 0), "LEFT AILERON: DOWN")
+            text(1650, 960, (1, 0, 0), "(Q-A) LEFT AILERON: DOWN")
             if self.__eulerAngularVelocity.val[2] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.0025], dtype=np.float64))
         elif keys[K_q]: # Counterclockwise
-            text(1650, 960, (1, 0, 0), "LEFT AILERON: UP")
+            text(1650, 960, (1, 0, 0), "(Q-A) LEFT AILERON: UP")
             if self.__eulerAngularVelocity.val[2] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.0025], dtype=np.float64))
         else:   # No roll acceleration
-            text(1650, 960, (1, 0, 0), "LEFT AILERON: NEUTRAL")
+            text(1650, 960, (1, 0, 0), "(Q-A) LEFT AILERON: NEUTRAL")
             if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
                 self.__eulerAngularVelocity.setAt(2,0)
             elif self.__eulerAngularVelocity.val[2] < 0:
@@ -141,15 +141,15 @@ class Camera:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.002], dtype=np.float64))
         
         if keys[K_r]:   # Clockwise
-            text(1650, 930, (1, 0, 0), "RIGHT AILERON: UP")
+            text(1650, 930, (1, 0, 0), "(R-F) RIGHT AILERON: UP")
             if self.__eulerAngularVelocity.val[2] < 30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0, 0.0025], dtype=np.float64))
         elif keys[K_f]: # Counterclockwise
-            text(1650, 930, (1, 0, 0), "RIGHT AILERON: DOWN")
+            text(1650, 930, (1, 0, 0), "(R-F) RIGHT AILERON: DOWN")
             if self.__eulerAngularVelocity.val[2] > -30:
                 self.__eulerAngularVelocity.addVal(np.array([0, 0, -0.0025], dtype=np.float64))
         else:   # No roll acceleration
-            text(1650, 930, (1, 0, 0), "RIGHT AILERON: NEUTRAL")
+            text(1650, 930, (1, 0, 0), "(R-F) RIGHT AILERON: NEUTRAL")
             if abs(self.__eulerAngularVelocity.val[2]) < 0.1:
                 self.__eulerAngularVelocity.setAt(2,0)
             elif self.__eulerAngularVelocity.val[2] < 0:
