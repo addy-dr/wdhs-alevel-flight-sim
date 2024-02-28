@@ -487,7 +487,7 @@ def main(collectDataPermission):
             text(0, 930, (1, 0, 0), "Position: " + str(mainCam.getPos().val))
 
             pg.display.flip() # Update window with active buffer contents
-            pg.time.wait(10) # Prevents frames from being rendered instantly
+            pg.time.wait(1) # Prevents frames from being rendered instantly
 
         except Exception as err:
             print("An error has ocurred.")
