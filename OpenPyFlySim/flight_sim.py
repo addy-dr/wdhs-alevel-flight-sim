@@ -174,7 +174,7 @@ class Camera:
 
         self.__front = direction.normalise()    # Get the front normalised vector
         self.__right = (Vector3.cross(Camera.up, self.__front)).normalise()
-        self.__right = rotate(self.__right, self.__front, math.radians(self.__eulerAngles.val[2]))  # Rotate right around front by roll
+        self.__right = rotate(self.__right, self.__front, self.__eulerAngles.val[2])  # Rotate right around front by roll
         self.__up = Vector3.cross(self.__front, self.__right)
 
         # Thrust
@@ -199,7 +199,7 @@ class Camera:
             else:
                 self.__thrust = 0 # In case we are perfectly still
 
-        self.__resolveForces(deltaTime)
+        self.__resolveForces()
 
         # Accelerate the velocity. Make sure the value on the axes doesnt surpass 40ms⁻1,
         # which is the hardcoded limit (prevents infinite velocity from acceleration in case of drag bugging out)
@@ -229,7 +229,7 @@ class Camera:
         text(0, 1020, (1, 0, 0), "Acceleration: "+str(self.__acceleration.magnitude()))
         text(0, 900, (1, 0, 0), "Throttle: "+str(round((self.__throttlePercent)))+'%')
 
-    def __resolveForces(self, deltaTime):
+    def __resolveForces(self):
 
         self.__angleofattack = math.degrees(math.asin(
             Vector3.subtractVectors(self.__front, self.__velocity.normalise()).normalise().val[1],
@@ -440,6 +440,10 @@ def main(collectDataPermission):
     glCullFace(GL_BACK)
     glFrontFace(GL_CCW)
     glDepthRange(0.0,1.0)
+
+    # this is in case program crashes at startup
+    verticelist = []
+    colCheck = []
 
     ### RUN PROGRAM ###
 
