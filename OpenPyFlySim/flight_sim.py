@@ -165,7 +165,7 @@ class Camera:
             self.__eulerAngles.setAt(1,-89)
         self.__eulerAngles.setAt(0,self.__eulerAngles.val[0] % 360) # Keep yaw within the bounds
 
-        # From drawing trigonemtric diagrams:
+        # From drawing trigonemtric diagrams (see analysis):
         direction.setVal([math.cos(math.radians(self.__eulerAngles.val[0]))
         * math.cos(math.radians(self.__eulerAngles.val[1])),
         math.sin(math.radians(self.__eulerAngles.val[1])),
