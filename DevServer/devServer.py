@@ -1,5 +1,6 @@
 import socket
 import json
+import hashlib
 
 def main():
     host = '0.0.0.0'
@@ -14,6 +15,9 @@ def main():
     server_socket.listen(5)  # Allow up to 5 queued connections
 
     print(f"Server listening on {host}:{port}")
+
+    with open("checksums.json", "r") as f:
+        checksums = json.load()
 
     while True:
         connection, address = server_socket.accept()
@@ -30,10 +34,21 @@ def main():
                 connection.sendall(b'cts') #clear to send
             else:
                 datadict = json.loads(data)
-                with open(f"error_logs/{datadict['timestamp']}.json", 'w') as file:
-                    json.dump(datadict, file)
-                connection.sendall(b"accepted")
-                print("success")
+                if datadict not in checksums:
+                    continue
+
+                logCheckSum = datadict["logchecksum"]
+                datadict["logchecksum"] = ''
+                if not (hashlib.md5(str(datadict).encode("utf")).hexdigest() == logCheckSum):
+                    continue
+                datadict["logchecksum"] = logCheckSum
+                try:
+                    with open(f"error_logs/{datadict['timestamp']}.json", 'w') as file:
+                        json.dump(datadict, file)
+                    connection.sendall(b"accepted")
+                    print("success")
+                except:
+                    print("error")
 
         connection.close()
 

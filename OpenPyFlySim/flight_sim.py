@@ -495,9 +495,9 @@ def main(collectDataPermission):
 
         except Exception as err:
             print("An error has ocurred.")
+            pg.quit()
             if collectDataPermission:
                 generateLog(err, traceback.format_exc(),
                             [mainCam.getPos().val, mainCam.getDir().val,
                             timeTaken, currTime, verticelist, colCheck])
-            pg.quit()
             quit()

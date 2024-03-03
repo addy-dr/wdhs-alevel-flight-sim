@@ -11,11 +11,12 @@ port = getDatafileData("host")
 def checksum(fileList):
     """Used to generate checksums. 
     Lets us know if code was tampered with."""
+    sourceCode = ''
     for file in fileList:
         with open(file, "rb") as f: #   rb = read in binary mode
             sourceCode += str(f.read())
-        # returns hash
-        return hashlib.md5(sourceCode.encode("utf")).hexdigest()
+    # returns hash
+    return hashlib.md5(sourceCode.encode("utf")).hexdigest()
 
 def generateLog(exceptiontype, traceback, variables):
 
@@ -34,7 +35,8 @@ def generateLog(exceptiontype, traceback, variables):
         "traceback": str(traceback),
         "variables": str(variables),
         "usertext": userText,
-        "checksum": checksum("flight_sim.py")+checksum("planedata.json")+checksum("colourmap.bmp"),
+        "checksum": checksum(["flight_sim.py", "datafile.txt", "maths_module.py", "crash_handler.py",
+                              "watermask.bmp", "heightmap.bmp", "colourmap.bmp", "planedata.json"]),
         "systemDetails": systemDetails,
         "logchecksum": "",
         "sent": 0 # Determines whether the log has been sent to the developers
