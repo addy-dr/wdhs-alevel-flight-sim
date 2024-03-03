@@ -1,10 +1,10 @@
 {
-    "timestamp": "2024-03-03 14:12:01.230251",
+    "timestamp": "2024-03-03 14:18:53.193486",
     "exception": "user forced crash",
     "traceback": "Traceback (most recent call last):\n  File \"/home/adrian/Documents/GitHub/wdhs-alevel-flight-sim/OpenPyFlySim/flight_sim.py\", line 468, in main\n    raise Exception(\"user forced crash\")\nException: user forced crash\n",
-    "variables": "[array([231. ,   0.8, 450. ]), array([270.,   0.,   0.]), 1000.0, 1965, [], []]",
+    "variables": "[array([231. ,   0.8, 450. ]), array([270.,   0.,   0.]), 0, 1964, [], []]",
     "usertext": "",
-    "checksum": "818c68e015af2813782d2a3aea6f1838",
+    "checksum": "d16f9cdb63c3cbe0d86f87815745b6d9",
     "systemDetails": [
         "Linux",
         "adrian",
@@ -12,6 +12,6 @@
         "#21~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Feb  9 13:32:52 UTC 2",
         "x86_64"
     ],
-    "logchecksum": "15365b37113a204cab69f6a3d23ca55b",
+    "logchecksum": "85d53f25d456d9033008dd4802765fef",
     "sent": 1
 }

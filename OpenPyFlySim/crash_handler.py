@@ -28,14 +28,14 @@ def generateLog(exceptiontype, traceback, variables):
         # os.uname works on linux, might not work on windows based on
         # https://stackoverflow.com/questions/62798371/os-uname-function-not-working-in-windows
         systemDetails = 'Unable to get OS details.'
-    
+
     crashReport = {
         "timestamp": str(datetime.datetime.now()),
         "exception": str(exceptiontype),
         "traceback": str(traceback),
         "variables": str(variables),
         "usertext": userText,
-        "checksum": checksum(["flight_sim.py", "datafile.txt", "maths_module.py", "crash_handler.py",
+        "checksum": checksum(["flight_sim.py", "maths_module.py", "crash_handler.py",
                               "watermask.bmp", "heightmap.bmp", "colourmap.bmp", "planedata.json"]),
         "systemDetails": systemDetails,
         "logchecksum": "",
@@ -47,8 +47,11 @@ def generateLog(exceptiontype, traceback, variables):
     with open(f"error_logs/{datetime.datetime.now()}.json", "w") as w:
         json.dump(crashReport, w)
 
-    # Send the log, as well as any dormant unsent logs
-    sendErrorLogs()
+    try:
+        # Send the log, as well as any dormant unsent logs
+        sendErrorLogs()
+    except:
+        print("an error has occured in the network connection.")
 
 def sendFile(filepath):
 

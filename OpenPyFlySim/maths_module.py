@@ -140,7 +140,7 @@ def writeDatafileData(variable, content):
             newfile+=(newline)
         else:
             newfile+=(lines[i])
-        if i != len(lines):
+        if i != len(lines)-1:
             #write a new line, except on last line
             newfile+='\n'
 
