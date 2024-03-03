@@ -17,7 +17,7 @@ def main():
     print(f"Server listening on {host}:{port}")
 
     with open("checksums.json", "r") as f:
-        checksums = json.load()
+        checksums = json.load(f)
 
     while True:
         connection, address = server_socket.accept()
