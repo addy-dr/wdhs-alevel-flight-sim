@@ -68,8 +68,8 @@ def sendFile(filepath):
             connection.sendall(data)
             log = json.loads(data.decode())
         response = connection.recv(1024).decode()
-        if response == "accepted":
-            log["sent"] = 1 # Marks as sent
+        if response == "accepted" or response == "failiure":
+            log["sent"] = 1 # Marks as sent and processed (won't send again)
             print("Successful transmission")
             with open(filepath, 'w') as f:
                 # Rewrites the file with the new data

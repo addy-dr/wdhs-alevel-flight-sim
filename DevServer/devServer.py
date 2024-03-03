@@ -36,7 +36,8 @@ def main():
                 try: 
                     datadict = json.loads(data)
                 except: # can't load data
-                    pass
+                    connection.sendall(b"failiure")
+                    continue
                 connection.sendall(b"accepted")
 
                 if datadict not in checksums:
