@@ -30,18 +30,19 @@ def generateLog(exceptiontype, traceback, variables):
         systemDetails = 'Unable to get OS details.'
 
     crashReport = {
-        "timestamp": str(datetime.datetime.now()),
-        "exception": str(exceptiontype),
-        "traceback": str(traceback),
-        "variables": str(variables),
-        "usertext": userText,
-        "checksum": checksum(["flight_sim.py", "maths_module.py", "crash_handler.py",
+        'timestamp': str(datetime.datetime.now()),
+        'exception': str(exceptiontype),
+        'traceback': str(traceback),
+        'variables': str(variables),
+        'usertext': userText,
+        'checksum': checksum(["flight_sim.py", "maths_module.py", "crash_handler.py",
                               "watermask.bmp", "heightmap.bmp", "colourmap.bmp", "planedata.json"]),
-        "systemDetails": systemDetails,
-        "logchecksum": "",
-        "sent": 0 # Determines whether the log has been sent to the developers
+        'systemDetails': str(systemDetails),
+        'logchecksum': "",
+        'sent': 0 # Determines whether the log has been sent to the developers
     }
     # Generate log's checksum
+    print(crashReport)
     crashReport["logchecksum"] = hashlib.md5(str(crashReport).encode("utf")).hexdigest()
     
     with open(f"error_logs/{datetime.datetime.now()}.json", "w") as w:
