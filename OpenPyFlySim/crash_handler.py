@@ -6,7 +6,7 @@ import socket
 from maths_module import getDatafileData
 
 host = getDatafileData("serverIP")
-port = getDatafileData("host")
+port = int(getDatafileData("host"))
 
 def checksum(fileList):
     """Used to generate checksums. 
@@ -47,11 +47,8 @@ def generateLog(exceptiontype, traceback, variables):
     with open(f"error_logs/{datetime.datetime.now()}.json", "w") as w:
         json.dump(crashReport, w)
 
-    try:
-        # Send the log, as well as any dormant unsent logs
-        sendErrorLogs()
-    except:
-        print("Server offline")
+    # Send the log, as well as any dormant unsent logs
+    sendErrorLogs()
 
 def sendFile(filepath):
 

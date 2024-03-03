@@ -34,6 +34,8 @@ def main():
                 connection.sendall(b'cts') #clear to send
             else:
                 datadict = json.loads(data)
+                connection.sendall(b"accepted")
+                
                 if datadict not in checksums:
                     continue
 
@@ -45,7 +47,6 @@ def main():
                 try:
                     with open(f"error_logs/{datadict['timestamp']}.json", 'w') as file:
                         json.dump(datadict, file)
-                    connection.sendall(b"accepted")
                     print("success")
                 except:
                     print("error")

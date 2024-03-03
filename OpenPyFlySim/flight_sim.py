@@ -409,6 +409,11 @@ def text(x, y, color, text):
     glutBitmapString(GLUT_BITMAP_HELVETICA_18, text.encode('ascii'))
 
 def main(collectDataPermission):
+    # this is in case program crashes at startup
+    verticelist = []
+    colCheck = []
+    timeTaken = 0
+
     pg.init()
     pg.font.init()
     glutInit()
@@ -441,10 +446,6 @@ def main(collectDataPermission):
     glFrontFace(GL_CCW)
     glDepthRange(0.0,1.0)
 
-    # this is in case program crashes at startup
-    verticelist = []
-    colCheck = []
-
     ### RUN PROGRAM ###
 
     currTime=pg.time.get_ticks() # Initialise program clock
@@ -470,7 +471,7 @@ def main(collectDataPermission):
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
 
             try:
-                timeTaken=1000/((pg.time.get_ticks()-currTime))
+                timeTaken = 1000/((pg.time.get_ticks()-currTime))
             except Exception: # Divide by zero sometimes happens when a frame is rendered instantly
                 timeTaken = 1000 # Small value of t
 
