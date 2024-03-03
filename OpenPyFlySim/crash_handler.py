@@ -42,7 +42,6 @@ def generateLog(exceptiontype, traceback, variables):
         'sent': 0 # Determines whether the log has been sent to the developers
     }
     # Generate log's checksum
-    print(crashReport)
     crashReport["logchecksum"] = hashlib.md5(str(crashReport).encode("utf")).hexdigest()
     
     with open(f"error_logs/{datetime.datetime.now()}.json", "w") as w:

@@ -46,8 +46,6 @@ def main():
 
                 logCheckSum = datadict["logchecksum"]
                 datadict["logchecksum"] = ""
-                print(datadict)
-                print(logCheckSum, hashlib.md5(str(datadict).encode("utf")).hexdigest())
                 if not (hashlib.md5(str(datadict).encode("utf")).hexdigest() == logCheckSum):
                     print("wrong checksum (for log)")
                     continue
