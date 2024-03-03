@@ -33,15 +33,20 @@ def main():
                 print("response sent")
                 connection.sendall(b'cts') #clear to send
             else:
-                datadict = json.loads(data)
+                try: 
+                    datadict = json.loads(data)
+                except: # can't load data
+                    pass
                 connection.sendall(b"accepted")
-                
+
                 if datadict not in checksums:
+                    print("wrong checksum")
                     continue
 
                 logCheckSum = datadict["logchecksum"]
                 datadict["logchecksum"] = ''
                 if not (hashlib.md5(str(datadict).encode("utf")).hexdigest() == logCheckSum):
+                    print("wrong checksum")
                     continue
                 datadict["logchecksum"] = logCheckSum
                 try:
