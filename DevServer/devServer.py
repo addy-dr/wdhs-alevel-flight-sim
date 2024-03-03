@@ -40,14 +40,16 @@ def main():
                     continue
                 connection.sendall(b"accepted")
 
-                if datadict not in checksums:
-                    print("wrong checksum")
+                if datadict["checksum"] not in checksums:
+                    print("wrong checksum (wrong version)")
                     continue
 
                 logCheckSum = datadict["logchecksum"]
-                datadict["logchecksum"] = ''
+                datadict["logchecksum"] = ""
+                print(datadict)
+                print(logCheckSum, hashlib.md5(str(datadict).encode("utf")).hexdigest())
                 if not (hashlib.md5(str(datadict).encode("utf")).hexdigest() == logCheckSum):
-                    print("wrong checksum")
+                    print("wrong checksum (for log)")
                     continue
                 datadict["logchecksum"] = logCheckSum
                 try:
