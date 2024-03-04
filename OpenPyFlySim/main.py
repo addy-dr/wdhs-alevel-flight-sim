@@ -1,5 +1,14 @@
-import pygame 
-import sys 
+# Check if relevant files exist
+try:
+    f = open("colourmap.bmp", "r")
+    f = open("heightmap.bmp", "r")
+    f = open("watermask.bmp", "r")
+    f = open("planedata.json", "r")
+    f = open("datafile.txt", "r")
+except:
+    raise Exception("One or more crucial files are missing. Please check if they are present and try again.")
+
+import pygame
 import flight_sim
 from maths_module import getDatafileData, writeDatafileData
 import crash_handler
@@ -96,6 +105,9 @@ def menu():
 
     # Map of the game world
     mapImg = pygame.image.load("colourmap.bmp").convert()
+    resolutionRatio = (mapImg.get_height()/mapImg.get_width())
+    mapImg = pygame.transform.scale(mapImg, (550, 550*resolutionRatio))
+
     
     while True:
         for event in pygame.event.get():
@@ -140,7 +152,7 @@ def menu():
         screen.blit(checkboxLine1, ((width/2)+230,(height/2)+320))
         screen.blit(checkboxLine2, ((width/2)+230,(height/2)+350))
 
-        screen.blit(mapImg, (100, 220))
+        screen.blit((mapImg), (100, 220))
 
         pygame.display.update()
 

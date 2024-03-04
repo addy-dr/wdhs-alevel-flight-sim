@@ -1,0 +1,11 @@
+{
+    "timestamp": "2024-03-04 13:03:10.710673",
+    "exception": "Display mode not set",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/adrian/Documents/GitHub/wdhs-alevel-flight-sim/OpenPyFlySim/flight_sim.py\", line 497, in main\n    pg.display.flip() # Update window with active buffer contents\npygame.error: Display mode not set\n",
+    "variables": "[array([231. ,   0.8, 450. ]), array([270.,   0.,   0.]), 1000, 8256, [], []]",
+    "usertext": "",
+    "checksum": "af38aafc7131254d83a3f94c518a4c6d",
+    "systemDetails": "posix.uname_result(sysname='Linux', nodename='adrian', release='6.5.0-21-generic', version='#21~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Feb  9 13:32:52 UTC 2', machine='x86_64')",
+    "logchecksum": "b919838c49dec291e339ed0f6ca3755e",
+    "sent": 0
+}

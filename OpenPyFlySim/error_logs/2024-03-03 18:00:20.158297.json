@@ -1,0 +1,11 @@
+{
+    "timestamp": "2024-03-03 18:00:20.125137",
+    "exception": "user forced crash",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/adrian/Documents/GitHub/wdhs-alevel-flight-sim/OpenPyFlySim/flight_sim.py\", line 468, in main\n    raise Exception(\"user forced crash\")\nException: user forced crash\n",
+    "variables": "[array([ 2.41601169e+02, -3.74369436e-01,  4.37432391e+02]), array([ 3.2087e+02, -5.2080e+01, -1.0000e-02]), 6.756756756756757, 480462, [], [(array([2.42e+02, 4.00e-01, 4.37e+02]), array([2.41e+02, 3.60e-01, 4.37e+02]), array([2.41e+02, 3.00e-01, 4.38e+02])), (array([2.42e+02, 4.00e-01, 4.37e+02]), array([2.41e+02, 3.00e-01, 4.38e+02]), array([2.42e+02, 3.00e-01, 4.38e+02])), (array([243.  ,   0.44, 437.  ]), array([2.42e+02, 4.00e-01, 4.37e+02]), array([2.42e+02, 3.00e-01, 4.38e+02])), (array([243.  ,   0.44, 437.  ]), array([2.42e+02, 3.00e-01, 4.38e+02]), array([2.43e+02, 3.00e-01, 4.38e+02])), (array([2.42e+02, 3.00e-01, 4.38e+02]), array([2.41e+02, 3.00e-01, 4.38e+02]), array([2.41e+02, 3.00e-01, 4.39e+02])), (array([2.42e+02, 3.00e-01, 4.38e+02]), array([2.41e+02, 3.00e-01, 4.39e+02]), array([2.42e+02, 3.00e-01, 4.39e+02])), (array([2.43e+02, 3.00e-01, 4.38e+02]), array([2.42e+02, 3.00e-01, 4.38e+02]), array([2.42e+02, 3.00e-01, 4.39e+02])), (array([2.43e+02, 3.00e-01, 4.38e+02]), array([2.42e+02, 3.00e-01, 4.39e+02]), array([2.43e+02, 3.00e-01, 4.39e+02]))]]",
+    "usertext": "Test",
+    "checksum": "4ead154896a00642f4d5e206350b7f38",
+    "systemDetails": "posix.uname_result(sysname='Linux', nodename='adrian', release='6.5.0-21-generic', version='#21~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Feb  9 13:32:52 UTC 2', machine='x86_64')",
+    "logchecksum": "40a4d81260579a70bde78c4ec885bc2e",
+    "sent": 1
+}

@@ -59,7 +59,9 @@ class Camera:
         with open("planedata.json", "r+") as f:
             # Produced using the Xfoil program from .dat files freely available at
             # http://airfoiltools.com/airfoil/details?airfoil=naca2412-il
-            plane_data = json.load(f)
+                plane_data = json.load(f)
+                if not (type(plane_data[0]) == list and len(plane_data[0]) == 3 and type(plane_data[1]) == dict):
+                    raise Exception("plane data improperly formatted")
         self.__airfoil = plane_data[1]
         self.__POWER = 754.7 * plane_data[0][0] #in watts, based on horsepower measurement in document
         self.__MASS = plane_data[0][1]
@@ -409,49 +411,48 @@ def text(x, y, color, text):
     glutBitmapString(GLUT_BITMAP_HELVETICA_18, text.encode('ascii'))
 
 def main(collectDataPermission):
-    # this is in case program crashes at startup
-    verticelist = []
-    colCheck = []
-    timeTaken = 0
+    try:
+        pg.init()
+        pg.font.init()
+        glutInit()
+        glutInitDisplayMode(GLUT_RGBA)
+        # pg.mouse.set_visible(False)
 
-    pg.init()
-    pg.font.init()
-    glutInit()
-    glutInitDisplayMode(GLUT_RGBA)
-    # pg.mouse.set_visible(False)
+        display = (1920, 1080)
+        screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
-    display = (1920, 1080)
-    screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
+        mainCam = Camera((231,0.8,450), False)   # Position
+        glClearColor(25/255, 235/225, 235/225, 0)   # Sets the colour of the "sky"
 
-    mainCam = Camera((231,0.8,450), False)   # Position
-    glClearColor(25/255, 235/225, 235/225, 0)   # Sets the colour of the "sky"
 
-    glMatrixMode(GL_PROJECTION)
-    gluPerspective(60, (display[0]/display[1]), 0.1, 50.0) # fov, aspect, zNear, zFar
-    glMatrixMode(GL_MODELVIEW)
-    glPushMatrix()
-    print("Display initialised")    # for logging
+        glMatrixMode(GL_PROJECTION)
+        gluPerspective(60, (display[0]/display[1]), 0.1, 50.0) # fov, aspect, zNear, zFar
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix()
+        print("Display initialised")    # for logging
 
-    mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
-    print("Map Generated")    # for logging
+        if not (len(heightmap) == len(colourmap) == len(watermask)):
+            raise Exception("Heightmap, Colourmap, Watermask must have same dimensions!")
 
-    #culling settings
-    glDepthMask(GL_TRUE)
-    glDepthFunc(GL_LESS)
-    glEnable(GL_DEPTH_TEST)
-    glEnable(GL_CULL_FACE)
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    glCullFace(GL_BACK)
-    glFrontFace(GL_CCW)
-    glDepthRange(0.0,1.0)
+        mapMatrix, coloursList = mapGen(heightmap, colourmap, watermask)
+        print("Map Generated")    # for logging
 
-    ### RUN PROGRAM ###
+        #culling settings
+        glDepthMask(GL_TRUE)
+        glDepthFunc(GL_LESS)
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_CULL_FACE)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glCullFace(GL_BACK)
+        glFrontFace(GL_CCW)
+        glDepthRange(0.0,1.0)
 
-    currTime=pg.time.get_ticks() # Initialise program clock
-    
-    while True: # Allows us to actually leave the program
-        try:
+        ### RUN PROGRAM ###
+
+        currTime=pg.time.get_ticks() # Initialise program clock
+        
+        while True: # Allows us to actually leave the program
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     pg.quit()
@@ -493,12 +494,16 @@ def main(collectDataPermission):
 
             pg.display.flip() # Update window with active buffer contents
             pg.time.wait(1) # Prevents frames from being rendered instantly
-
-        except Exception as err:
-            print("An error has ocurred.")
-            pg.quit()
-            if collectDataPermission:
+    except Exception as err:
+        print("An error has ocurred.")
+        pg.quit()
+        if collectDataPermission:
+            try:
                 generateLog(err, traceback.format_exc(),
-                            [mainCam.getPos().val, mainCam.getDir().val,
-                            timeTaken, currTime, verticelist, colCheck])
-            quit()
+                        [mainCam.getPos().val, mainCam.getDir().val,
+                        timeTaken, currTime, verticelist, colCheck])
+            except:
+                # In case that one of the variables is missing
+                generateLog(err, traceback.format_exc(),
+                        [])
+        quit()
