@@ -12,6 +12,7 @@ import pygame
 import flight_sim
 from maths_module import getDatafileData, writeDatafileData
 import crash_handler
+import json
 
 class Button:
     def __init__(self, screen, x, y, w, h, text, font):
@@ -74,6 +75,8 @@ class Checkbox(Button):
 def menu():
     try:
         crash_handler.sendErrorLogs()
+    except json.decoder.JSONDecodeError:
+        print("IMPORTANT: One or more of your log files are corrupted!")
     except:
         print("Servers offline.")
     pygame.init()
