@@ -56,6 +56,7 @@ def generateLog(exceptiontype, traceback, variables):
 def sendFile(filepath):
 
     # Connect to ipv4 and tcp
+    print("Trying to connect...")
     connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     connection.connect((host, port))
 
