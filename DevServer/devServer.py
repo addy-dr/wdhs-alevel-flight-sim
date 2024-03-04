@@ -35,8 +35,9 @@ def main():
             else:
                 try: 
                     datadict = json.loads(data)
-                except: # can't load data
+                except Exception as e: # can't load data
                     connection.sendall(b"failiure")
+                    print("failed to recieve:", e)
                     continue
                 connection.sendall(b"accepted")
 
