@@ -77,6 +77,7 @@ def menu():
         crash_handler.sendErrorLogs()
     except json.decoder.JSONDecodeError:
         print("IMPORTANT: One or more of your log files are corrupted!")
+        return 0
     except:
         print("Servers offline.")
     pygame.init()

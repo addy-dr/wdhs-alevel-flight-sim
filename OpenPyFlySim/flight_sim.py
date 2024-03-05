@@ -341,9 +341,10 @@ def renderTriangles(vertices):
 @njit
 def getTerrain(mapMatrix, coloursList, camPositionx, camPositionz, yaw, pitch):
     verticelist, collisionCheckList = [], []
-    # We define an inner function so we can calculate arctan.
-    # This is since we can't import math or numpy into this njit func.
-    # cant use recursion here as njit doesnt support it
+   # We define an inner function so we can calculate arctan.
+   # This is since we can't import math or numpy into this njit func. Adapted trig algorithm from
+   # https://stackoverflow.com/questions/44249104/calculating-inverse-trigonometric-functions-with-formulas
+   # cant use recursion here as njit doesnt support it
     def arctan(x):
         i = 0
         while abs(x) > 0.1:
@@ -421,7 +422,7 @@ def main(collectDataPermission):
         display = (1920, 1080)
         screen = pg.display.set_mode(display, DOUBLEBUF|OPENGL)
 
-        mainCam = Camera((231,0.8,450), False)   # Position
+        mainCam = Camera((230,0.8,150), False)   # Position
         glClearColor(25/255, 235/225, 235/225, 0)   # Sets the colour of the "sky"
 
 
